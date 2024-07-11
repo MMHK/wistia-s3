@@ -56,9 +56,6 @@ func Test_SaveConfig(t *testing.T) {
 		Storage: &StorageConfig{
 			S3: &S3Config{},
 		},
-		DB: &DBConfig{
-			MySQL: &MySQLConfig{},
-		},
 	}
 	configPath := tests.GetLocalPath("../config.json")
 	err := conf.Save(configPath)

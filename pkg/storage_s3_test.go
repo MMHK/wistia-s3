@@ -49,7 +49,7 @@ func TestPutStream(t *testing.T) {
 	}
 	defer file.Close()
 
-	distPath := fmt.Sprintf("%s%s", MakeUUID(), filepath.Ext(filename))
+	distPath := fmt.Sprintf("media/%s", filepath.Ext(filename))
 
 	path, url, err := disk.PutStream(file, distPath, &UploadOptions{
 		ContentType: mime.TypeByExtension(filename),
