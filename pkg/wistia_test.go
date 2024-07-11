@@ -3,7 +3,6 @@ package pkg
 import (
 	"testing"
 	"wistia-s3/tests"
-	_ "wistia-s3/tests"
 )
 
 func TestWistiaHelper_GetVideoDetail(t *testing.T) {
@@ -36,7 +35,7 @@ func TestWistiaHelper_MoveToS3(t *testing.T) {
 	helper := NewWistiaHelper(conf)
 	s3Conf := loadS3Config()
 
-	video, err := helper.MoveToS3("7bg0z4stnx", s3Conf)
+	video, err := helper.MoveToS3("u7k1cgyjy0", s3Conf)
 	if err != nil {
 		t.Error(err)
 		t.Fail()

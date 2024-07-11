@@ -21,6 +21,7 @@ func loadS3Config() *S3Config {
 		SecretKey: os.Getenv("S3_SECRET"),
 		Bucket: os.Getenv("S3_BUCKET"),
 		Region: os.Getenv("S3_REGION"),
+		CloudFrontDomain: os.Getenv("S3_CLOUDFRONT_DOMAIN"),
 		PrefixPath: remotePathPrefix,
 	}
 }

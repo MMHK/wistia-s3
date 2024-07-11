@@ -6,6 +6,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -80,23 +81,32 @@ type WistiaRespVideo struct {
 
 type WistiaConf struct {
 	WistiaApiKey string `json:"wistia_api_key"`
+	WorkerLimit  int    `json:"worker_limit"`
 }
 
 func (this *WistiaConf) MarginWithENV() *WistiaConf {
 	if this.WistiaApiKey == "" {
 		this.WistiaApiKey = os.Getenv("WISTIA_API_KEY")
 	}
+	if this.WorkerLimit == 0 {
+		this.WorkerLimit, _ = strconv.Atoi(os.Getenv("WISTIA_WORKER_LIMIT"))
+	}
+	if this.WorkerLimit == 0 {
+		this.WorkerLimit = 3
+	}
 
 	return this
 }
 
 type WistiaHelper struct {
-	Conf *WistiaConf
+	Conf  *WistiaConf
+	queue chan bool
 }
 
 func NewWistiaHelper(conf *WistiaConf) *WistiaHelper {
 	return &WistiaHelper{
 		Conf: conf,
+		queue: make(chan bool, conf.WorkerLimit),
 	}
 }
 
@@ -141,19 +151,15 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, error
 		return "", err
 	}
 
-	workerLimit := 3
-	queue := make(chan bool, workerLimit)
-	defer close(queue)
-
 	for _, asset := range *video.Assets {
 		wg.Add(1)
 
 		go func(asset *WistiaRespVideoAsset, wg *sync.WaitGroup) {
 			defer wg.Done()
 			defer func() {
-				<-queue
+				<-this.queue
 			}()
-			queue <- true
+			this.queue <- true
 
 			Log.Infof("Downloading [%s]\n", asset.Url)
 
@@ -186,10 +192,14 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, error
 				remoteKey = fmt.Sprintf("media/%s/original%s", video.HashId, extension)
 			}
 
-			_, url, err := storage.PutStream(resp.Body, remoteKey, &UploadOptions{ContentType: asset.ContentType, PublicRead: true})
+			path, url, err := storage.PutStream(resp.Body, remoteKey, &UploadOptions{ContentType: asset.ContentType, PublicRead: true})
 			if err != nil {
 				Log.Errorf("upload [%s] Error: %s\n", asset.Url, err)
 				return
+			}
+
+			if conf.UseCloudFront() {
+				url = fmt.Sprintf("https://%s/%s", conf.CloudFrontDomain, strings.TrimLeft(path, "/"))
 			}
 
 			Log.Infof("Uploaded %s to %s\n", asset.Url, url)
@@ -207,7 +217,12 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, error
 		Log.Error(err)
 		return "", err
 	}
-	_, url, err := storage.PutContent(string(bin), remoteKey, &UploadOptions{ContentType: "application/json", PublicRead: true})
+	path, url, err := storage.PutContent(string(bin), remoteKey, &UploadOptions{ContentType: "application/json", PublicRead: true})
+
+
+	if conf.UseCloudFront() {
+		url = fmt.Sprintf("https://%s/%s", conf.CloudFrontDomain, strings.TrimLeft(path, "/"))
+	}
 
 	return url, nil
 }

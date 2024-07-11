@@ -1,0 +1,30 @@
+{
+  "name": "wistia-player-alternative",
+  "version": "1.0.0",
+  "description": "A Wistia player alternative.",
+  "main": "src/main.js",
+  "scripts": {
+    "build": "cross-env NODE_ENV=production MEDIA_ENDPOINT=__MEDIA_ENDPOINT__ webpack"
+  },
+  "dependencies": {
+    "wistia-player-alternative": "github:MMHK/wistia-player-alternative#player"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.7",
+    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
+    "@babel/plugin-transform-runtime": "^7.24.7",
+    "@babel/plugin-transform-template-literals": "^7.24.7",
+    "@babel/preset-env": "^7.24.7",
+    "@babel/runtime": "^7.24.7",
+    "babel-loader": "^9.1.3",
+    "clean-webpack-plugin": "^4.0.0",
+    "core-js": "^3.37.1",
+    "cross-env": "^7.0.3",
+    "file-loader": "^6.2.0",
+    "terser-webpack-plugin": "^5.3.10",
+    "url-loader": "^4.1.1",
+    "webpack": "^5.92.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4"
+  }
+}

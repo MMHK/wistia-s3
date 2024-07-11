@@ -6,11 +6,16 @@ import (
 )
 
 type S3Config struct {
-	AccessKey  string `json:"access_key"`
-	SecretKey  string `json:"secret_key"`
-	Bucket     string `json:"bucket"`
-	Region     string `json:"region"`
-	PrefixPath string `json:"prefix"`
+	AccessKey        string `json:"access_key"`
+	SecretKey        string `json:"secret_key"`
+	Bucket           string `json:"bucket"`
+	Region           string `json:"region"`
+	PrefixPath       string `json:"prefix"`
+	CloudFrontDomain string `json:"cloudfront_domain"`
+}
+
+func (c *S3Config) UseCloudFront() bool {
+	return len(c.CloudFrontDomain) > 0
 }
 
 type StorageConfig struct {
