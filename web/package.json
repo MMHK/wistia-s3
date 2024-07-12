@@ -4,9 +4,12 @@
   "description": "A Wistia player alternative.",
   "main": "src/main.js",
   "scripts": {
-    "build": "cross-env NODE_ENV=production MEDIA_ENDPOINT=__MEDIA_ENDPOINT__ webpack"
+    "build": "cross-env NODE_ENV=production webpack",
+    "serve": "cross-env NODE_ENV=development webpack-dev-server --open"
   },
   "dependencies": {
+    "clipboard": "^2.0.11",
+    "highlight.js": "^11.10.0",
     "wistia-player-alternative": "github:MMHK/wistia-player-alternative#player"
   },
   "devDependencies": {
@@ -21,6 +24,11 @@
     "core-js": "^3.37.1",
     "cross-env": "^7.0.3",
     "file-loader": "^6.2.0",
+    "html-inline-css-webpack-plugin": "^1.11.2",
+    "html-inline-script-webpack-plugin": "^3.2.1",
+    "html-loader": "^5.0.0",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.9.0",
     "terser-webpack-plugin": "^5.3.10",
     "url-loader": "^4.1.1",
     "webpack": "^5.92.1",
