@@ -7,10 +7,10 @@ const wrapper = document.querySelector("#code-block-1");
 const raw = `
 <div class="wistia_responsive_padding">
     <div class="wistia_responsive_wrapper">
-        <div class="wistia_embed wistia_async_7bg0z4stnx videoFoam=true playsinline=true" style="height:100%;width:100%">&nbsp;</div>
+        <div class="wistia_embed wistia_async_{{.HashId}} videoFoam=true playsinline=true" style="height:100%;width:100%">&nbsp;</div>
     </div>
 </div>
-<script type="text/javascript" src="{{ .MediaEndPoint }}"></script>`;
+<script type="text/javascript" src="{{.WistiaS3JSUrl}}"></script>`;
 
 hljs.registerLanguage('xml', html);
 

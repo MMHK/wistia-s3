@@ -20,6 +20,7 @@ const IS_DEVSERVER = process.env.WEBPACK_DEV_SERVER || process.env.WEBPACK_SERVE
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const TerserWebpackPlugin = require('terser-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const HtmlWebpackExcludeAssetsPlugin = require('html-webpack-exclude-assets-plugin-webpack5');
 const HtmlInlineScriptPlugin = require('html-inline-script-webpack-plugin');
 const HTMLInlineCSSWebpackPlugin = require('html-inline-css-webpack-plugin').default;
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
@@ -39,7 +40,7 @@ const config = {
 	mode: IS_DEVSERVER ? 'development' : 'production',
 	entry: {
     "wistia-s3": ['./src/main.js'],
-    "demo": ["./src/demo.js"],
+    "demo": ['./src/main.js', "./src/demo.js"],
   },
 
 	output: {
@@ -55,9 +56,8 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "index.html",
       template: path.relative(__dirname, "src/index.html"),
-      hash: true,
+      // hash: true,
       inject: "body",
-      chunks: ['demo', "wistia-s3"]
     }),
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
@@ -66,9 +66,15 @@ const config = {
       chunkFilename: 'css/[id].css',
       ignoreOrder: false, // Enable to remove warnings about conflicting order
     }),
+
+    // new HtmlWebpackExcludeAssetsPlugin(),
+  ].concat(IS_DEVSERVER ? []: [
     new HTMLInlineCSSWebpackPlugin(),
-    new HtmlInlineScriptPlugin(),
-	],
+    new HtmlInlineScriptPlugin({
+      htmlMatchPattern: [/index.html$/],
+      scriptMatchPattern: [/demo.min.js$/],
+    }),
+  ]),
 
 	module: {
 		rules: [
@@ -150,7 +156,7 @@ const config = {
 	devServer: {
 		open: true,
 		compress: true,
-    hot: true,
+    hot: IS_DEVSERVER,
 		static: {
 			directory: path.join(__dirname, 'dist'),
 		},

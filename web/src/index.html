@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ .VideoName }}</title>
+    <title>{{.VideoName}}</title>
     <style>
     body {
         margin: 0;
@@ -51,7 +51,7 @@
         <h3>Preview: </h3>
         <div class="wistia_responsive_padding">
             <div class="wistia_responsive_wrapper">
-                <div class="wistia_embed wistia_async_7bg0z4stnx videoFoam=true playsinline=true" style="height:100%;width:100%">&nbsp;</div>
+                <div class="wistia_embed wistia_async_{{.HashId}} videoFoam=true playsinline=true" style="height:100%;width:100%">&nbsp;</div>
             </div>
         </div>
     </div>

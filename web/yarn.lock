@@ -3850,6 +3850,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"html-webpack-exclude-assets-plugin-webpack5@npm:^0.0.7":
+  version: 0.0.7
+  resolution: "html-webpack-exclude-assets-plugin-webpack5@npm:0.0.7"
+  peerDependencies:
+    html-webpack-plugin: ^5
+    webpack: ^5
+  checksum: f68e8fbaa2402b770d41c63e8f810274eb2d3435407e1b72e52bc71e124c2d83b79e487381b42a7268baed976f1b4a3f8dcd73ed22e83c3a361ebbf033d2e178
+  languageName: node
+  linkType: hard
+
 "html-webpack-plugin@npm:^5.6.0":
   version: 5.6.0
   resolution: "html-webpack-plugin@npm:5.6.0"
@@ -6584,6 +6594,7 @@ __metadata:
     html-inline-css-webpack-plugin: ^1.11.2
     html-inline-script-webpack-plugin: ^3.2.1
     html-loader: ^5.0.0
+    html-webpack-exclude-assets-plugin-webpack5: ^0.0.7
     html-webpack-plugin: ^5.6.0
     mini-css-extract-plugin: ^2.9.0
     terser-webpack-plugin: ^5.3.10

@@ -1,3 +1,6 @@
 /.idea
 /vendor
 /.env
+/web/.yarn
+.yarn
+node_modules
