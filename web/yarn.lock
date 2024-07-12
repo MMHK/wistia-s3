@@ -6561,8 +6561,8 @@ __metadata:
   linkType: hard
 
 "wistia-player-alternative@github:MMHK/wistia-player-alternative#player":
-  version: 1.0.0
-  resolution: "wistia-player-alternative@https://github.com/MMHK/wistia-player-alternative.git#commit=56e0ed6fbc771a01d97f308a9e232139029ef417"
+  version: 1.0.2
+  resolution: "wistia-player-alternative@https://github.com/MMHK/wistia-player-alternative.git#commit=74bb02ce4aadfa716ac5d9bc9c72e990e438a49b"
   dependencies:
     "@silvermine/videojs-quality-selector": ^1.3.1
     "@videojs-player/vue": ^1.0.0
@@ -6570,7 +6570,7 @@ __metadata:
     normalize.css: ^8.0.1
     video.js: ^8.12.0
     vue: ^3.4.26
-  checksum: 3f7dd7eb117140095f641f5816e85f2008460ff39e82bf730177d9ca837b1232e24cd336bb184559e3c4f57f4b84b3126e18086a291016a96a3db49fd475045c
+  checksum: 65a9992c11b8a263d81f697b46561784b97076b8c20acbe68e0d9e1780f7fa48a488d570940a78e01552f2071854a89dc9f20dc35dc0c63dc83fb1c496b675d3
   languageName: node
   linkType: hard
 
