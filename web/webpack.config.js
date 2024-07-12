@@ -40,7 +40,7 @@ const config = {
 	mode: IS_DEVSERVER ? 'development' : 'production',
 	entry: {
     "wistia-s3": ['./src/main.js'],
-    "demo": ['./src/main.js', "./src/demo.js"],
+    "demo": ["./src/demo.js"],
   },
 
 	output: {
@@ -48,6 +48,7 @@ const config = {
 		path: path.resolve(__dirname, 'dist'),
 		publicPath: 'auto',
 		clean: true,
+
 	},
 
 	plugins: [
@@ -58,6 +59,7 @@ const config = {
       template: path.relative(__dirname, "src/index.html"),
       // hash: true,
       inject: "body",
+      excludeAssets: [/wistia-s3.min.js/]
     }),
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
@@ -67,13 +69,13 @@ const config = {
       ignoreOrder: false, // Enable to remove warnings about conflicting order
     }),
 
-    // new HtmlWebpackExcludeAssetsPlugin(),
   ].concat(IS_DEVSERVER ? []: [
     new HTMLInlineCSSWebpackPlugin(),
     new HtmlInlineScriptPlugin({
       htmlMatchPattern: [/index.html$/],
       scriptMatchPattern: [/demo.min.js$/],
     }),
+    new HtmlWebpackExcludeAssetsPlugin(),
   ]),
 
 	module: {

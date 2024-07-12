@@ -236,6 +236,77 @@ func (this *WistiaHelper) UploadWistiaS3JS(conf *S3Config) (string, string, erro
 	return "", s3Url, nil
 }
 
+func (this *WistiaHelper) UploadDemoPage(video *WistiaRespVideo, conf *S3Config, wg *sync.WaitGroup) (string, string, error) {
+	if wg != nil {
+		defer wg.Done()
+	}
+	defer func() {
+		<-this.queue
+	}()
+	this.queue <- true
+
+	data := TemplateData{
+		HashId:        video.HashId,
+		MediaEndPoint: fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media", conf.Region, conf.Bucket, conf.PrefixPath),
+		VideoName:     video.Name,
+		WistiaS3JSUrl: fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media/wistia-s3.min.js", conf.Region, conf.Bucket, conf.PrefixPath),
+	}
+
+	storage, err := NewS3Storage(conf)
+	if err != nil {
+		Log.Error(err)
+		return "", "", err
+	}
+
+	tplName := "index.html"
+
+	remoteKey := fmt.Sprintf("media/%s/%s", video.HashId, tplName)
+	Log.Infof("generate %s => %s\n", tplName, remoteKey)
+	reader, err := this.BuildTemplate(tplName, &data)
+	if err != nil {
+		Log.Error(err)
+		return "", "", err
+	}
+	_, s3Url, err := storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/html", PublicRead: true})
+	if err != nil {
+		Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
+		return "", "", err
+	}
+	Log.Infof("Uploaded %s to %s\n", tplName, s3Url)
+
+	if conf.UseCloudFront() {
+		if wg != nil {
+			defer wg.Done()
+		}
+		defer func() {
+			<-this.queue
+		}()
+		this.queue <- true
+
+		remoteKey = fmt.Sprintf("cloudfront/media/%s/%s", video.HashId, tplName)
+		data.MediaEndPoint = fmt.Sprintf("https://%s/%s/cloudfront/media", conf.CloudFrontDomain, conf.PrefixPath)
+		data.WistiaS3JSUrl = fmt.Sprintf("https://%s/%s/cloudfront/media/wistia-s3.min.js", conf.CloudFrontDomain, conf.PrefixPath)
+
+		Log.Infof("generate %s => %s\n", tplName, remoteKey)
+		reader, err := this.BuildTemplate(tplName, &data)
+		if err != nil {
+			Log.Error(err)
+			return "", s3Url, err
+		}
+		_, _, err = storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/html", PublicRead: true})
+		if err != nil {
+			Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
+			return "", s3Url, err
+		}
+		cfUrl := fmt.Sprintf("https://%s/%s/cloudfront/media/%s/%s", conf.CloudFrontDomain, conf.PrefixPath, video.HashId, tplName)
+		Log.Infof("Uploaded %s to %s\n", tplName, cfUrl)
+
+		return cfUrl, s3Url, nil
+	}
+
+	return "", s3Url, nil
+}
+
 func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, string, error) {
 	video, err := this.GetVideoDetail(hashId)
 	if err != nil {
@@ -306,63 +377,12 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 		}(asset, &wg)
 	}
 
-	data := TemplateData{
-		HashId:        hashId,
-		MediaEndPoint: fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media", conf.Region, conf.Bucket, conf.PrefixPath),
-		VideoName:     video.Name,
-		WistiaS3JSUrl: fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media/wistia-s3.min.js", conf.Region, conf.Bucket, conf.PrefixPath),
-	}
-
-	wg.Add(1)
-	go func(tplName string, wg *sync.WaitGroup) {
-		defer wg.Done()
-		defer func() {
-			<-this.queue
-		}()
-		this.queue <- true
-
-		remoteKey := fmt.Sprintf("media/%s/%s", video.HashId, tplName)
-		Log.Infof("generate %s => %s\n", tplName, remoteKey)
-		reader, err := this.BuildTemplate(tplName, &data)
-		if err != nil {
-			Log.Error(err)
-			return
-		}
-		_, url, err := storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/html", PublicRead: true})
-		if err != nil {
-			Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
-			return
-		}
-		Log.Infof("Uploaded %s to %s\n", tplName, url)
-	}("index.html", &wg)
-
+	counter := 1
 	if conf.UseCloudFront() {
-
-		wg.Add(1)
-		go func(tplName string, wg *sync.WaitGroup) {
-			defer wg.Done()
-			defer func() {
-				<-this.queue
-			}()
-			this.queue <- true
-
-			remoteKey := fmt.Sprintf("cloudfront/media/%s/%s", video.HashId, tplName)
-			Log.Infof("generate %s => %s\n", tplName, remoteKey)
-			data.MediaEndPoint = fmt.Sprintf("https://%s/%s/cloudfront/media", conf.CloudFrontDomain, conf.PrefixPath)
-			data.WistiaS3JSUrl = fmt.Sprintf("https://%s/%s/cloudfront/media/wistia-s3.min.js", conf.CloudFrontDomain, conf.PrefixPath)
-			reader, err := this.BuildTemplate(tplName, &data)
-			if err != nil {
-				Log.Error(err)
-				return
-			}
-			_, url, err := storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/html", PublicRead: true})
-			if err != nil {
-				Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
-				return
-			}
-			Log.Infof("Uploaded %s to %s\n", tplName, url)
-		}("index.html", &wg)
+		counter = 2
 	}
+	wg.Add(counter)
+	go this.UploadDemoPage(video, conf, &wg)
 
 	wg.Wait()
 
