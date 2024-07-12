@@ -1,4 +1,5 @@
-(function (window){
+(function (e) {
+  window.MEDIA_ENDPOINT = e.MEDIA_ENDPOINT || undefined;
   require("wistia-player-alternative/dist/js/main");
 })({
   ...window,
