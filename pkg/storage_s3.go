@@ -27,11 +27,12 @@ func LoadS3ConfigWithEnv() *S3Config {
 	}
 
 	return &S3Config{
-		AccessKey: os.Getenv("S3_KEY"),
-		SecretKey: os.Getenv("S3_SECRET"),
-		Bucket: os.Getenv("S3_BUCKET"),
-		Region: os.Getenv("S3_REGION"),
-		PrefixPath: remotePathPrefix,
+		AccessKey:        os.Getenv("S3_KEY"),
+		SecretKey:        os.Getenv("S3_SECRET"),
+		Bucket:           os.Getenv("S3_BUCKET"),
+		Region:           os.Getenv("S3_REGION"),
+		CloudFrontDomain: os.Getenv("S3_CLOUDFRONT_DOMAIN"),
+		PrefixPath:       remotePathPrefix,
 	}
 }
 

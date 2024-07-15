@@ -7,8 +7,10 @@ import (
 )
 
 type Config struct {
-	ParserType string         `json:"parser"` // sendgrid | pop3
+	Listen     string         `json:"listen"`
+	Webroot    string         `json:"webroot"`
 	Storage    *StorageConfig `json:"storages"`
+	WistiaConf *WistiaConf    `json:"wistia"`
 	TempDir    string
 }
 
@@ -26,6 +28,19 @@ func (this *Config) MarginWithENV() {
 		this.Storage = &StorageConfig{
 			S3: LoadS3ConfigWithEnv(),
 		}
+	}
+
+	if this.WistiaConf == nil || this.WistiaConf.WistiaApiKey == "" {
+		conf := new(WistiaConf)
+		conf.MarginWithENV()
+		this.WistiaConf = conf
+	}
+
+	if len(this.Listen) <= 0 {
+		this.Listen = os.Getenv("LISTEN")
+	}
+	if len(this.Webroot) <= 0 {
+		this.Webroot = os.Getenv("WEBROOT")
 	}
 }
 

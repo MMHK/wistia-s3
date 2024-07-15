@@ -121,7 +121,6 @@ func TestWistiaHelper_BuildTemplateWithDelims(t *testing.T) {
 	t.Log("PASS")
 }
 
-
 func TestWistiaHelper_UploadWistiaS3JS(t *testing.T) {
 	conf := new(WistiaConf)
 	conf.MarginWithENV()

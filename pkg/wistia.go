@@ -399,6 +399,7 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 		Log.Error(err)
 		return "", "", err
 	}
+	Log.Debugf("Uploaded %s to %s\n", remoteKey, s3Url)
 
 	cloudFrontUrl := ""
 	if conf.UseCloudFront() {
@@ -418,6 +419,7 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 			return "", s3Url, err
 		}
 		cloudFrontUrl = fmt.Sprintf("https://%s/%s", conf.CloudFrontDomain, strings.TrimLeft(path, "/"))
+		Log.Debugf("Uploaded %s to %s\n", remoteKey, cloudFrontUrl)
 	}
 
 	return cloudFrontUrl, s3Url, nil

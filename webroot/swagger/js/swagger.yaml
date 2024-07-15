@@ -1,0 +1,50 @@
+openapi: 3.0.1
+info:
+  title: Wista-S3
+  description: 将 Wistia 上的视频上传至 S3。
+  version: V1
+servers:
+  - url: /
+tags: []
+paths:
+  /tasks/{id}:
+    get:
+      tags: []
+      summary: 获取任务状态
+      description: <p>获取任务状态</p>
+      parameters:
+        - name: id
+          in: path
+          description: 任务ID
+          required: true
+          schema:
+            type: string
+      responses:
+        500:
+          description: API报错
+          content: { }
+        200:
+          description: PDF文件内容
+          content: { }
+  
+  /move/{hash}:
+    post:
+      tags: []
+      summary: 迁移Video到S3
+      description: <p>迁移Video到S3</p>
+      operationId: ""
+      parameters:
+        - name: hash
+          in: path
+          description: Wistia Video HashId
+          required: true
+          schema:
+            type: string
+      responses:
+        500:
+          description: API报错
+          content: {}
+        200:
+          description: PDF文件内容
+          content: {}
+components: {}
