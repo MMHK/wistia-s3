@@ -1,0 +1,12 @@
+vendor
+.git
+.idea
+.yarn
+node_modules
+web/node_modules
+web/src
+web/*.lock
+web/.yarn
+*.md
+.env
+docker-composer.yml
