@@ -9,4 +9,5 @@ web/*.lock
 web/.yarn
 *.md
 .env
+*.db
 docker-composer.yml

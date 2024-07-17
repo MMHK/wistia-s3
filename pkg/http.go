@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -83,6 +85,7 @@ func (s *HTTPService) Start() {
 	r.Use(JSONErrorMiddleware)
 
 	r.HandleFunc("/", s.RedirectSwagger)
+	r.HandleFunc("/refresh/media", s.RefreshVideoInfo).Methods("POST")
 	r.HandleFunc("/media", s.GetAllVideo).Methods("GET")
 	r.HandleFunc("/move/{hash}", s.VideoToS3).Methods("POST")
 	r.HandleFunc("/tasks/{id}", s.GetTask).Methods("GET")
@@ -232,6 +235,84 @@ func (s *HTTPService) GetAllVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.ResponseJSON(videos, w)
+}
+
+func (s *HTTPService) RefreshVideoInfo(w http.ResponseWriter, r *http.Request) {
+	taskID := generateID()
+	task := &Task{
+		ID:     taskID,
+		Status: TASK_STATUS_RUNNING,
+	}
+
+	tasksMu.Lock()
+	tasks[taskID] = task
+	tasksMu.Unlock()
+
+	go func(taskId string) {
+
+		s3, err := NewS3Storage(s.config.Storage.S3)
+		if err != nil {
+			Log.Error(err)
+			tasksMu.Lock()
+			tasks[taskID] = &Task{
+				Status: TASK_STATUS_ERROR,
+				Result: err.Error(),
+				ID:     taskID,
+			}
+			tasksMu.Unlock()
+			return
+		}
+
+		Log.Debug("list all video json from S3")
+		files, err := s3.ListFiles("media")
+		if err != nil {
+			Log.Error(err)
+			tasksMu.Lock()
+			tasks[taskID] = &Task{
+				Status: TASK_STATUS_ERROR,
+				Result: err.Error(),
+				ID:     taskID,
+			}
+			tasksMu.Unlock()
+			return
+		}
+
+		Log.Debug("saving video info to database")
+		dbHelper := NewDBHelper(s.config.DBConf)
+
+		for _, row := range files {
+			if strings.HasSuffix(row, "index.json") {
+				url := fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s", s.config.Storage.S3.Region, s.config.Storage.S3.Bucket, row)
+				resp, err := http.Get(url)
+				if err != nil {
+					Log.Error(err)
+					continue
+				}
+				defer resp.Body.Close()
+
+				hashId := filepath.Base(strings.Replace(row, "/index.json", "", 1))
+
+				err = dbHelper.SaveVideoInfo(hashId, resp.Body)
+				if err != nil {
+					Log.Error(err)
+					continue
+				}
+			}
+		}
+
+		tasksMu.Lock()
+		tasks[taskID] = &Task{
+			Status: TASK_STATUS_FINISHED,
+			Result: true,
+			ID:     taskID,
+		}
+		tasksMu.Unlock()
+
+	}(taskID)
+
+	s.ResponseJSON(task, w)
+
+
 }
 
 

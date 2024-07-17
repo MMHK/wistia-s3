@@ -12,11 +12,28 @@
   ],
   "tags": [],
   "paths": {
+    "/refresh/media": {
+      "post": {
+        "tags": [],
+        "summary": "从S3刷新所有 uploaded video 到 local DB",
+        "description": "<p>从S3刷新所有 uploaded video 到 local DB</p>",
+        "responses": {
+          "200": {
+            "description": "PDF文件内容",
+            "content": {}
+          },
+          "500": {
+            "description": "API报错",
+            "content": {}
+          }
+        }
+      }
+    },
     "/media": {
       "get": {
         "tags": [],
-        "summary": "获取所有视频信息",
-        "description": "<p>获取所有视频信息</p>",
+        "summary": "获取所有 uploaded 视频信息",
+        "description": "<p>获取所有 uploaded 视频信息</p>",
         "responses": {
           "200": {
             "description": "PDF文件内容",
