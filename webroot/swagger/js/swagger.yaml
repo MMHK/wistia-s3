@@ -7,6 +7,19 @@ servers:
   - url: /
 tags: []
 paths:
+  /media:
+    get:
+      tags: []
+      summary: 获取所有视频信息
+      description: <p>获取所有视频信息</p>
+      responses:
+        500:
+          description: API报错
+          content: { }
+        200:
+          description: PDF文件内容
+          content: { }
+
   /tasks/{id}:
     get:
       tags: []

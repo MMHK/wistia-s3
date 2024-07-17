@@ -44,6 +44,7 @@ ENV LISTEN="0.0.0.0:8843" \
  S3_CLOUDFRONT_DOMAIN="" \
  TZ="Asia/Hong_Kong" \
  LOG_LEVEL=INFO \
+ DB_FILE_PATH=/app/wista-s3.db \
  WEBROOT=/app/web
 
 EXPOSE 3031

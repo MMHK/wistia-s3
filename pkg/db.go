@@ -11,17 +11,17 @@ type DBConfig struct {
 	FilePath string
 }
 
-type BDHelper struct {
+type DBHelper struct {
 	Conf *DBConfig
 }
 
-func NewBDHelper(conf *DBConfig) *BDHelper {
-	return &BDHelper{
+func NewDBHelper(conf *DBConfig) *DBHelper {
+	return &DBHelper{
 		Conf: conf,
 	}
 }
 
-func (this *BDHelper) SaveVideoInfo (hashId string, r io.Reader) error {
+func (this *DBHelper) SaveVideoInfo (hashId string, r io.Reader) error {
 	db, err := bolt.Open(this.Conf.FilePath, 0600, nil)
 	if err != nil {
 		Log.Error(err)
@@ -55,7 +55,7 @@ func (this *BDHelper) SaveVideoInfo (hashId string, r io.Reader) error {
 	return nil
 }
 
-func (this *BDHelper) GetAllVideoInfo() ([]*WistiaRespVideo, error) {
+func (this *DBHelper) GetAllVideoInfo() ([]*WistiaRespVideo, error) {
 	list := make([]*WistiaRespVideo, 0)
 
 	db, err := bolt.Open(this.Conf.FilePath, 0600, nil)

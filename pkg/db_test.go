@@ -3,6 +3,10 @@ package pkg
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"path/filepath"
+	"strings"
 	"testing"
 	"wistia-s3/tests"
 	_ "wistia-s3/tests"
@@ -12,7 +16,7 @@ func TestBDHelper_SaveVideoInfo(t *testing.T) {
 	conf := new(Config)
 	conf.MarginWithENV()
 
-	dbHelper := NewBDHelper(conf.DBConf)
+	dbHelper := NewDBHelper(conf.DBConf)
 
 	wistiaHelper := NewWistiaHelper(conf.WistiaConf)
 
@@ -41,11 +45,51 @@ func TestBDHelper_SaveVideoInfo(t *testing.T) {
 	}
 }
 
+func TestDBHelper_RefreshAllVideo(t *testing.T) {
+	conf := new(Config)
+	conf.MarginWithENV()
+
+	s3, err := NewS3Storage(conf.Storage.S3)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+	files, err := s3.ListFiles("media")
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+
+	dbHelper := NewDBHelper(conf.DBConf)
+
+	for _, row := range files {
+		if strings.HasSuffix(row, "index.json") {
+			url := fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s", conf.Storage.S3.Region, conf.Storage.S3.Bucket, row)
+			resp, err := http.Get(url)
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+			defer resp.Body.Close()
+
+			hashId := filepath.Base(strings.Replace(row, "/index.json", "", 1))
+			t.Log(hashId)
+			err = dbHelper.SaveVideoInfo(hashId, resp.Body)
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+		}
+	}
+}
+
 func TestBDHelper_GetAllVideoINfo(t *testing.T) {
 	conf := new(Config)
 	conf.MarginWithENV()
 
-	dbHelper := NewBDHelper(conf.DBConf)
+	dbHelper := NewDBHelper(conf.DBConf)
 
 	videos, err := dbHelper.GetAllVideoInfo()
 	if err != nil {

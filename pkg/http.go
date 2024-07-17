@@ -83,8 +83,7 @@ func (s *HTTPService) Start() {
 	r.Use(JSONErrorMiddleware)
 
 	r.HandleFunc("/", s.RedirectSwagger)
-	//r.HandleFunc("/htmlpdf", s.HTMLPDF)
-	//r.HandleFunc("/linkpdf", s.LINKPDF)
+	r.HandleFunc("/media", s.GetAllVideo).Methods("GET")
 	r.HandleFunc("/move/{hash}", s.VideoToS3).Methods("POST")
 	r.HandleFunc("/tasks/{id}", s.GetTask).Methods("GET")
 	r.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/",
@@ -201,9 +200,38 @@ func (s *HTTPService) VideoToS3(w http.ResponseWriter, r *http.Request) {
 		}
 		tasksMu.Unlock()
 
+		go func() {
+			dbHelper := NewDBHelper(s.config.DBConf)
+			resp, err := http.Get(s3Json)
+			if err != nil {
+				Log.Error(err)
+				return
+			}
+			defer resp.Body.Close()
+			err = dbHelper.SaveVideoInfo(hashId, resp.Body)
+			if err != nil {
+				Log.Error(err)
+			}
+		}()
+
 	}(videoHash, taskID)
 
 	s.ResponseJSON(task, w)
+}
+
+func (s *HTTPService) GetAllVideo(w http.ResponseWriter, r *http.Request) {
+	dbHelper := NewDBHelper(s.config.DBConf)
+	videos, err := dbHelper.GetAllVideoInfo()
+	if err != nil {
+		s.ResponseJSONError(&APIStandardError{
+			Status:     false,
+			Error:      err.Error(),
+			HttpStatus: http.StatusInternalServerError,
+		}, w)
+		return
+	}
+
+	s.ResponseJSON(videos, w)
 }
 
 

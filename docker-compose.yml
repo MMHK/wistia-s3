@@ -17,5 +17,6 @@ services:
       - TZ=Asia/Hong_Kong
       - LISTEN=0.0.0.0:3031
       - WEBROOT=/app/webroot
+      - DB_FILE_PATH=/app/wista-s3.db
     ports:
       - "3031:3031"
