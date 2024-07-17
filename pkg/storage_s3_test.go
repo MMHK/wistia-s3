@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"strings"
 	"wistia-s3/tests"
 	"fmt"
 	"mime"
@@ -63,4 +64,23 @@ func TestPutStream(t *testing.T) {
 
 	t.Log(path)
 	t.Log(url)
+}
+
+func TestS3Storage_ListFiles(t *testing.T) {
+	disk := getStorage(t)
+	files, err := disk.ListFiles("media")
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+
+	for _, row := range files {
+		if strings.HasSuffix(row, "index.json") {
+			t.Log(row)
+		}
+	}
+
+
+	t.Log(files)
 }

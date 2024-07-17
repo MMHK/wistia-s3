@@ -11,6 +11,7 @@ type Config struct {
 	Webroot    string         `json:"webroot"`
 	Storage    *StorageConfig `json:"storages"`
 	WistiaConf *WistiaConf    `json:"wistia"`
+	DBConf     *DBConfig      `json:"db"`
 	TempDir    string
 }
 
@@ -30,10 +31,20 @@ func (this *Config) MarginWithENV() {
 		}
 	}
 
+	if len(this.TempDir) <= 0 {
+		this.TempDir = os.TempDir()
+	}
+
 	if this.WistiaConf == nil || this.WistiaConf.WistiaApiKey == "" {
 		conf := new(WistiaConf)
 		conf.MarginWithENV()
 		this.WistiaConf = conf
+	}
+
+	if this.DBConf == nil {
+		this.DBConf = &DBConfig{
+			FilePath: os.Getenv("DB_FILE_PATH"),
+		}
 	}
 
 	if len(this.Listen) <= 0 {

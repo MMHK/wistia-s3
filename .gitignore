@@ -4,3 +4,4 @@
 /web/.yarn
 .yarn
 node_modules
+/*.db

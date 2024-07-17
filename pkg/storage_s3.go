@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -112,6 +113,25 @@ func (this *S3Storage) PutStream(reader io.Reader, Key string, opt *UploadOption
 	}
 
 	return path, info.Location, err
+}
+
+func (this *S3Storage) ListFiles(prefix string) ([]string, error) {
+	svc := s3.New(this.session)
+	result, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{
+		Bucket: aws.String(this.Conf.Bucket),
+		Prefix: aws.String(fmt.Sprintf("%s/%s", this.Conf.PrefixPath, prefix)),
+	})
+	if err != nil {
+		Log.Error(err)
+		return nil, err
+	}
+
+	list := make([]string, 0)
+	for _, item := range result.Contents {
+		list = append(list, *item.Key)
+	}
+
+	return list, nil
 }
 
 func (this *S3Storage) GetDownloadLink(Key string) (string, error) {
