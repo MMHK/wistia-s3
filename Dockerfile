@@ -22,7 +22,7 @@ FROM alpine:latest
 
 RUN apk update \
  && apk add --update libintl \
- && apk add --no-cache tzdata dumb-init
+ && apk add --no-cache tzdata dumb-init mailcap
 
 WORKDIR /app
 

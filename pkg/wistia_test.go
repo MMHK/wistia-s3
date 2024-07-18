@@ -3,6 +3,7 @@ package pkg
 import (
 	"encoding/json"
 	"io"
+	"mime"
 	"os"
 	"testing"
 	"wistia-s3/tests"
@@ -14,7 +15,7 @@ func TestWistiaHelper_GetVideoDetail(t *testing.T) {
 
 	helper := NewWistiaHelper(conf)
 
-	video, err := helper.GetVideoDetail("7bg0z4stnx")
+	video, err := helper.GetVideoDetail("253ufvw2pf")
 	if err != nil {
 		t.Error(err)
 		t.Fail()
@@ -30,6 +31,17 @@ func TestWistiaHelper_GetVideoDetail(t *testing.T) {
 	t.Log(tests.ToJSON(video.Assets.GetVideoFiles()))
 
 	t.Log("PASS")
+}
+
+func TestNewWistiaHelper_MimeDetect(t *testing.T) {
+	mimeType := "video/mp4"
+	extList, err := mime.ExtensionsByType(mimeType)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+	t.Log(extList)
 }
 
 func TestWistiaHelper_MoveToS3(t *testing.T) {
