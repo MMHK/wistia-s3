@@ -11,11 +11,13 @@ import (
 	"time"
 )
 
-const TASK_STATUS_INIT = "init";
-const TASK_STATUS_RUNNING = "running";
-const TASK_STATUS_FINISHED = "finished";
-const TASK_STATUS_ERROR = "error";
+const TASK_STATUS_INIT = "init"
 
+const TASK_STATUS_RUNNING = "running"
+
+const TASK_STATUS_FINISHED = "finished"
+
+const TASK_STATUS_ERROR = "error"
 
 type HTTPService struct {
 	config *Config
@@ -32,15 +34,22 @@ type APIResponse struct {
 	Data   interface{} `json:"data"`
 }
 
-type Move2S3Result struct {
-	CloudFront string `json:"cloudfront"`
-	S3         string `json:"s3"`
-}
-
 type Task struct {
 	ID     string      `json:"id"`
 	Status string      `json:"status"`
 	Result interface{} `json:"result,omitempty"`
+}
+
+type MultipleMediaBody struct {
+	HashList []string `json:"media"`
+}
+
+type MoveToS3Result struct {
+	HashId     string `json:"hash"`
+	CloudFront string `json:"cloudfront"`
+	S3         string `json:"s3"`
+	Status     bool   `json:"status"`
+	Error      string `json:"error"`
 }
 
 var (
@@ -51,7 +60,6 @@ var (
 func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
-
 
 func NewHTTP(conf *Config) *HTTPService {
 	return &HTTPService{
@@ -69,8 +77,8 @@ func JSONErrorMiddleware(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(APIStandardError{
 					HttpStatus: http.StatusInternalServerError,
-					Error: "Internal Server Error",
-					Status: false,
+					Error:      "Internal Server Error",
+					Status:     false,
 				})
 			}
 		}()
@@ -88,6 +96,7 @@ func (s *HTTPService) Start() {
 	r.HandleFunc("/refresh/media", s.RefreshVideoInfo).Methods("POST")
 	r.HandleFunc("/media", s.GetAllVideo).Methods("GET")
 	r.HandleFunc("/move/{hash}", s.VideoToS3).Methods("POST")
+	r.HandleFunc("/move", s.VideoToS3).Methods("POST")
 	r.HandleFunc("/tasks/{id}", s.GetTask).Methods("GET")
 	r.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/",
 		http.FileServer(http.Dir(fmt.Sprintf("%s/swagger", s.config.Webroot)))))
@@ -120,7 +129,6 @@ func (s *HTTPService) ResponseJSON(source interface{}, writer http.ResponseWrite
 	}
 }
 
-
 func (s *HTTPService) ResponseJSONError(err *APIStandardError, writer http.ResponseWriter) {
 	writer.Header().Add("Content-Type", "application/json")
 	writer.WriteHeader(err.HttpStatus)
@@ -128,7 +136,6 @@ func (s *HTTPService) ResponseJSONError(err *APIStandardError, writer http.Respo
 	encoder.SetEscapeHTML(false)
 	encoder.Encode(err)
 }
-
 
 func (s *HTTPService) NotFoundHandle(writer http.ResponseWriter, request *http.Request) {
 	s.ResponseJSONError(&APIStandardError{
@@ -164,8 +171,24 @@ func (s *HTTPService) GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HTTPService) VideoToS3(w http.ResponseWriter, r *http.Request) {
+	list := &MultipleMediaBody{
+		HashList: []string{},
+	}
 	params := mux.Vars(r)
 	videoHash := params["hash"]
+
+	if len(videoHash) > 0 {
+		list.HashList = append(list.HashList, videoHash)
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
+			s.ResponseJSONError(&APIStandardError{
+				Status:     false,
+				Error:      err.Error(),
+				HttpStatus: http.StatusBadRequest,
+			}, w)
+			return
+		}
+	}
 
 	taskID := generateID()
 	task := &Task{
@@ -177,53 +200,115 @@ func (s *HTTPService) VideoToS3(w http.ResponseWriter, r *http.Request) {
 	tasks[taskID] = task
 	tasksMu.Unlock()
 
-	go func(hashId string, taskId string) {
-		helper := NewWistiaHelper(s.config.WistiaConf)
-		cloudFrontJson, s3Json, err := helper.MoveToS3(hashId, s.config.Storage.S3)
-		if err != nil {
-			Log.Error(err)
-			tasksMu.Lock()
-			tasks[taskID] = &Task{
-				Status: TASK_STATUS_ERROR,
-				Result: err.Error(),
-				ID:     taskID,
-			}
-			tasksMu.Unlock()
-			return
-		}
-
-		tasksMu.Lock()
-		tasks[taskID] = &Task{
-			Status: TASK_STATUS_FINISHED,
-			Result: &Move2S3Result{
-				CloudFront: cloudFrontJson,
-				S3:         s3Json,
-			},
-			ID:     taskID,
-		}
-		tasksMu.Unlock()
-
-		go func() {
-			dbHelper := NewDBHelper(s.config.DBConf)
-			resp, err := http.Get(s3Json)
-			if err != nil {
-				Log.Error(err)
-				return
-			}
-			defer resp.Body.Close()
-			err = dbHelper.SaveVideoInfo(hashId, resp.Body)
-			if err != nil {
-				Log.Error(err)
-			}
-		}()
-
-	}(videoHash, taskID)
+	go s.MoveVideoToS3(list, taskID)
 
 	s.ResponseJSON(task, w)
 }
 
-func (s *HTTPService) GetAllVideo(w http.ResponseWriter, r *http.Request) {
+func (s *HTTPService) SaveVideoInfo(s3Json string, hashId string) error {
 	dbHelper := NewDBHelper(s.config.DBConf)
+	resp, err := http.Get(s3Json)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer resp.Body.Close()
+	err = dbHelper.SaveVideoInfo(hashId, resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *HTTPService) FindVideoInfo(hashId string) (*WistiaRespVideo, error) {
+	dbHelper := NewDBHelper(s.config.DBConf)
+	return dbHelper.FindVideoInfo(hashId)
+}
+
+func (s *HTTPService) MoveVideoToS3(source *MultipleMediaBody, TaskId string) {
+	wg := sync.WaitGroup{}
+	helper := NewWistiaHelper(s.config.WistiaConf)
+	dbHelper := NewDBHelper(s.config.DBConf)
+
+	resultList := make([]*MoveToS3Result, len(source.HashList))
+
+	for i, hashId := range source.HashList {
+		wg.Add(1)
+		go func(hashId string, taskId string, index int, wg *sync.WaitGroup) {
+			defer wg.Done()
+
+			_, err := dbHelper.FindVideoInfo(hashId)
+			if err == nil {
+				cloudfrontJson, s3Json := helper.GenerateVideoInfoURL(hashId, s.config.Storage.S3)
+
+				resultList[index] = &MoveToS3Result{
+					HashId:     hashId,
+					Status:     true,
+					S3:         s3Json,
+					CloudFront: cloudfrontJson,
+				}
+				return
+			}
+
+			cloudFrontJson, s3Json, err := helper.MoveToS3(hashId, s.config.Storage.S3)
+			if err != nil {
+				Log.Error(err)
+				resultList[index] = &MoveToS3Result{
+					HashId: hashId,
+					Status: false,
+					Error:  err.Error(),
+				}
+				return
+			}
+
+			resultList[index] = &MoveToS3Result{
+				HashId:     hashId,
+				Status:     true,
+				S3:         s3Json,
+				CloudFront: cloudFrontJson,
+			}
+
+			defer func() {
+				go s.SaveVideoInfo(s3Json, hashId)
+			}()
+
+		}(hashId, TaskId, i, &wg)
+	}
+
+	wg.Wait()
+
+	tasksMu.Lock()
+	tasks[TaskId] = &Task{
+		Status: TASK_STATUS_FINISHED,
+		Result: resultList,
+		ID:     TaskId,
+	}
+	tasksMu.Unlock()
+}
+
+func (s *HTTPService) GetAllVideo(w http.ResponseWriter, r *http.Request) {
+	// 获取查询参数
+	queryParams := r.URL.Query()
+	hashId := queryParams.Get("hash")
+
+	dbHelper := NewDBHelper(s.config.DBConf)
+
+	if len(hashId) > 0 {
+		video, err := dbHelper.FindVideoInfo(hashId)
+		if err != nil {
+			s.ResponseJSONError(&APIStandardError{
+				Status:     false,
+				Error:      err.Error(),
+				HttpStatus: http.StatusInternalServerError,
+			}, w)
+			return
+		}
+		s.ResponseJSON([]*WistiaRespVideo{video}, w)
+		return
+	}
+
 	videos, err := dbHelper.GetAllVideoInfo()
 	if err != nil {
 		s.ResponseJSONError(&APIStandardError{
@@ -312,7 +397,4 @@ func (s *HTTPService) RefreshVideoInfo(w http.ResponseWriter, r *http.Request) {
 
 	s.ResponseJSON(task, w)
 
-
 }
-
-

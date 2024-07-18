@@ -34,6 +34,16 @@
         "tags": [],
         "summary": "获取所有 uploaded 视频信息",
         "description": "<p>获取所有 uploaded 视频信息</p>",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "description": "视频 HashId",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "PDF文件内容",
@@ -79,7 +89,7 @@
         "tags": [],
         "summary": "迁移Video到S3",
         "description": "<p>迁移Video到S3</p>",
-        "operationId": "",
+        "operationId": "single-move",
         "parameters": [
           {
             "name": "hash",
@@ -91,6 +101,43 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "PDF文件内容",
+            "content": {}
+          },
+          "500": {
+            "description": "API报错",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/move": {
+      "post": {
+        "tags": [],
+        "summary": "批量迁移Video到S3",
+        "description": "<p>批量迁移Video到S3</p>",
+        "operationId": "multiple-move",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "media": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": "视频HashId"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "PDF文件内容",

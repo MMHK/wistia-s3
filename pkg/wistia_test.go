@@ -164,3 +164,16 @@ func TestWistiaHelper_UploadDemoPage(t *testing.T) {
 	t.Logf("s3: %s\n", s3Url)
 	t.Log("PASS")
 }
+
+func TestWistiaHelper_GenerateVideoInfoURL(t *testing.T) {
+	conf := new(WistiaConf)
+	conf.MarginWithENV()
+
+	s3Conf := loadS3Config()
+
+	helper := NewWistiaHelper(conf)
+
+	cloudfrontJson, s3Json := helper.GenerateVideoInfoURL("7bg0z4stnx", s3Conf)
+	t.Log(cloudfrontJson)
+	t.Log(s3Json)
+}

@@ -102,3 +102,18 @@ func TestBDHelper_GetAllVideoINfo(t *testing.T) {
 		t.Log(tests.ToJSON(row))
 	}
 }
+
+func TestDBHelper_FindVideoInfo(t *testing.T) {
+	conf := new(Config)
+	conf.MarginWithENV()
+
+	dbHelper := NewDBHelper(conf.DBConf)
+
+	video, err := dbHelper.FindVideoInfo("3rfrljngd1")
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+	t.Log(tests.ToJSON(video))
+}

@@ -89,3 +89,27 @@ func (this *DBHelper) GetAllVideoInfo() ([]*WistiaRespVideo, error) {
 
 	return list, nil
 }
+
+func (this *DBHelper) FindVideoInfo(hashId string) (*WistiaRespVideo, error) {
+	db, err := bolt.Open(this.Conf.FilePath, 0600, nil)
+	if err != nil {
+		Log.Error(err)
+		return nil, err
+	}
+	defer db.Close()
+
+	var info WistiaRespVideo
+
+	err = db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("media"))
+
+		bin := bucket.Get([]byte(hashId))
+		return json.Unmarshal(bin, &info)
+	})
+	if err != nil {
+		Log.Error(err)
+		return nil, err
+	}
+
+	return &info, nil
+}

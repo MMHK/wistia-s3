@@ -424,3 +424,8 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 
 	return cloudFrontUrl, s3Url, nil
 }
+
+func (this *WistiaHelper) GenerateVideoInfoURL(hashId string, conf *S3Config) (string, string) {
+	return fmt.Sprintf("https://%s/%s/cloudfront/media/%s/index.json", conf.CloudFrontDomain, conf.PrefixPath, hashId),
+		fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media/%s/index.json", conf.Region, conf.Bucket, conf.PrefixPath, hashId)
+}
