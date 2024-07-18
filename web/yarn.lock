@@ -1306,7 +1306,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.24.7, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.8.4":
+"@babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.5.5":
+  version: 7.24.8
+  resolution: "@babel/runtime@npm:7.24.8"
+  dependencies:
+    regenerator-runtime: ^0.14.0
+  checksum: 6b1e4230580f67a807ad054720812bbefbb024cc2adc1159d050acbb764c4c81c7ac5f7a042c48f578987c5edc2453c71039268df059058e9501fa6023d764b0
+  languageName: node
+  linkType: hard
+
+"@babel/runtime@npm:^7.24.7, @babel/runtime@npm:^7.8.4":
   version: 7.24.7
   resolution: "@babel/runtime@npm:7.24.7"
   dependencies:
@@ -1737,17 +1746,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@videojs-player/vue@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "@videojs-player/vue@npm:1.0.0"
-  peerDependencies:
-    "@types/video.js": 7.x
-    video.js: 7.x
-    vue: 3.x
-  checksum: f96dd7b5f7c9349e732a8775d71bf76f8cc0d30d8a99cf815f4ba85f4e19dab47a0e00edecc971285a9149a1f4a6d2fbf528962e0a8429954d0a4a57ebe2ab9d
-  languageName: node
-  linkType: hard
-
 "@videojs/http-streaming@npm:3.13.1":
   version: 3.13.1
   resolution: "@videojs/http-streaming@npm:3.13.1"
@@ -1809,103 +1807,103 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vue/compiler-core@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/compiler-core@npm:3.4.31"
+"@vue/compiler-core@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/compiler-core@npm:3.4.32"
   dependencies:
     "@babel/parser": ^7.24.7
-    "@vue/shared": 3.4.31
+    "@vue/shared": 3.4.32
     entities: ^4.5.0
     estree-walker: ^2.0.2
     source-map-js: ^1.2.0
-  checksum: f3a854d8b4e1415de98967d32e1a831977f3d4b3819a347bc8adfe922ac78b5fe8c3558dd96ff4ac39f9794e0dad9df7068b28c1ab23e850aeeea1c6759150cf
+  checksum: 1743205465c322ddf62f8d2dd1557528626dd36f7528c9ca7e7cb7dbb0969f903dbc46e470220f5a8e30ff2bc6fd7ba9e5b5ef973f7bfd125ece51a77dcd9b29
   languageName: node
   linkType: hard
 
-"@vue/compiler-dom@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/compiler-dom@npm:3.4.31"
+"@vue/compiler-dom@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/compiler-dom@npm:3.4.32"
   dependencies:
-    "@vue/compiler-core": 3.4.31
-    "@vue/shared": 3.4.31
-  checksum: 432db99196b11891a6aef689f59a56c5a382c05367482609ff6af62ab2c435f280776c725bdc2e5deec67dea8a82c36b5cc8d079786ac46acee8efc99c2daceb
+    "@vue/compiler-core": 3.4.32
+    "@vue/shared": 3.4.32
+  checksum: c4e762e372c2ea374b9cac7f1d94f553f2e9f892713b9441838de4993d99f6eb1a184d2f268c550878f876ed40869677f92852a91db42f11c6e0591a7ee943aa
   languageName: node
   linkType: hard
 
-"@vue/compiler-sfc@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/compiler-sfc@npm:3.4.31"
+"@vue/compiler-sfc@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/compiler-sfc@npm:3.4.32"
   dependencies:
     "@babel/parser": ^7.24.7
-    "@vue/compiler-core": 3.4.31
-    "@vue/compiler-dom": 3.4.31
-    "@vue/compiler-ssr": 3.4.31
-    "@vue/shared": 3.4.31
+    "@vue/compiler-core": 3.4.32
+    "@vue/compiler-dom": 3.4.32
+    "@vue/compiler-ssr": 3.4.32
+    "@vue/shared": 3.4.32
     estree-walker: ^2.0.2
     magic-string: ^0.30.10
-    postcss: ^8.4.38
+    postcss: ^8.4.39
     source-map-js: ^1.2.0
-  checksum: ba2ad63d03587b1dcd82c19d27deebd731824c98168f0508f1d88defda9b628b66286b5a470ef480b1f941ae09286ce3da1d42623a5650c9527b099b555026b6
+  checksum: 376eb5326be7e69028e2d089a84778607b0ab28d2ca545fb65b635c550cb727a0095bb821c7e71d662f410d110a4be7bf45169a8bb3bfeb0779b838a29a90281
   languageName: node
   linkType: hard
 
-"@vue/compiler-ssr@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/compiler-ssr@npm:3.4.31"
+"@vue/compiler-ssr@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/compiler-ssr@npm:3.4.32"
   dependencies:
-    "@vue/compiler-dom": 3.4.31
-    "@vue/shared": 3.4.31
-  checksum: 9731e8e155989c5bb5889f2bc44fa9d89e1e93c81ee976611f090b3e5028aa7a1bbf49bf17d54b3c4fc3817cd2b18b146656d24480743995be601f26e0494338
+    "@vue/compiler-dom": 3.4.32
+    "@vue/shared": 3.4.32
+  checksum: aeb2f7af9eff9a73ece21ca7b038b2537542cafb367e2d9c7d55522d475bdb7892e9d7333de3de26ac0bedf9c4caced73b28f64ed2f9417aa40fdc343a48edd8
   languageName: node
   linkType: hard
 
-"@vue/reactivity@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/reactivity@npm:3.4.31"
+"@vue/reactivity@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/reactivity@npm:3.4.32"
   dependencies:
-    "@vue/shared": 3.4.31
-  checksum: 44f1b010cffd6bdc3ba8e71263215da9e467a6d9de3ae686f586c1cd4a102292a6139dbac4a2bf04909ae5aaeb51b776b5026c42ed8df172e648faab22dd093e
+    "@vue/shared": 3.4.32
+  checksum: acd4c298df635238701d13753b3ce6a7cd95c6d0a7aa9286ed7afe41bb750cc66398a1175e4b721555f06fa3f0b4f59b4ee4aee1675cde5cfda3d91a3e630194
   languageName: node
   linkType: hard
 
-"@vue/runtime-core@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/runtime-core@npm:3.4.31"
+"@vue/runtime-core@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/runtime-core@npm:3.4.32"
   dependencies:
-    "@vue/reactivity": 3.4.31
-    "@vue/shared": 3.4.31
-  checksum: beafc384c3c6b2e0637f378092dddaea3c61973348e686c8d7fcc704376d845d8ce24be301d66c724a5d4ce1375b1de13df78e6b21d26e667c24d7874ef08e06
+    "@vue/reactivity": 3.4.32
+    "@vue/shared": 3.4.32
+  checksum: 09c50865230c7eaea300190fe1df74f2485379b7de35256beebfa570e4f4c16d73936b1752675ef8155d554b4ff20475486c9b6cf33931c530c738d650d0d758
   languageName: node
   linkType: hard
 
-"@vue/runtime-dom@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/runtime-dom@npm:3.4.31"
+"@vue/runtime-dom@npm:3.4.32, @vue/runtime-dom@npm:^3.4.31":
+  version: 3.4.32
+  resolution: "@vue/runtime-dom@npm:3.4.32"
   dependencies:
-    "@vue/reactivity": 3.4.31
-    "@vue/runtime-core": 3.4.31
-    "@vue/shared": 3.4.31
+    "@vue/reactivity": 3.4.32
+    "@vue/runtime-core": 3.4.32
+    "@vue/shared": 3.4.32
     csstype: ^3.1.3
-  checksum: c3805dea6c5640211c908f3c126f4ef853e8763789d386dbe756822a7580b4d3791089b6145e839eba1d7e5ab30bed1a3ae8e62527a8cf5afcfabd820ade9de5
+  checksum: c5c05547bb9b478a758ed50a456975244192470c60f7d38d63edacb9429ea4743703c0c757106a5e7d00954c6a004a4209865aca31e45790adac44b55c431618
   languageName: node
   linkType: hard
 
-"@vue/server-renderer@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/server-renderer@npm:3.4.31"
+"@vue/server-renderer@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/server-renderer@npm:3.4.32"
   dependencies:
-    "@vue/compiler-ssr": 3.4.31
-    "@vue/shared": 3.4.31
+    "@vue/compiler-ssr": 3.4.32
+    "@vue/shared": 3.4.32
   peerDependencies:
-    vue: 3.4.31
-  checksum: fafac6905f9f123641741e6ebfd465b3f57424d0e408cda5a2f79824e0f1ffac0daa534964dfc4eebfd81e886b6a96a8dd705d5aba4dab5884eb944cabc25ac3
+    vue: 3.4.32
+  checksum: ce1fd61fbfffc200c9277c7afea829bf483d95f1eaef3c85a9bc95583247882c1a1ae51d0b219e06b684637b6656c8f7e0433c41a75b931c4a2edab1403eb7c0
   languageName: node
   linkType: hard
 
-"@vue/shared@npm:3.4.31":
-  version: 3.4.31
-  resolution: "@vue/shared@npm:3.4.31"
-  checksum: 28b452eda16cb7ed63a40cb7892e16bb5a7d855839a7bfca9b5ef70b4e59ceb9938a88db2c3adbff35c602304cd133f1090e0c7f35d10db5d9361a253be2cd2e
+"@vue/shared@npm:3.4.32":
+  version: 3.4.32
+  resolution: "@vue/shared@npm:3.4.32"
+  checksum: 3d4a5667ff11c3c532e774a7e9cfbead1dd41e7d9517e470caff0705bbf70c90a4ad320d39e417fbafe6c4663630e29381856a281e1f61b80f9844a91d326c87
   languageName: node
   linkType: hard
 
@@ -5202,7 +5200,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:^8.4.38":
+"postcss@npm:^8.4.39":
   version: 8.4.39
   resolution: "postcss@npm:8.4.39"
   dependencies:
@@ -6276,8 +6274,8 @@ __metadata:
   linkType: hard
 
 "video.js@npm:^7 || ^8, video.js@npm:^8, video.js@npm:^8.12.0":
-  version: 8.17.0
-  resolution: "video.js@npm:8.17.0"
+  version: 8.17.1
+  resolution: "video.js@npm:8.17.1"
   dependencies:
     "@babel/runtime": ^7.12.5
     "@videojs/http-streaming": 3.13.1
@@ -6292,7 +6290,7 @@ __metadata:
     videojs-contrib-quality-levels: 4.1.0
     videojs-font: 4.2.0
     videojs-vtt.js: 0.15.5
-  checksum: 1eadd87812e6150ce65a39a2586d666092fe70fc0bada81307b0233f468920a0b4d48a588709a9f69ff65c06819c1f11c2b1dc0437ff77431cdd22d8001ffe58
+  checksum: 3be04c4442d1466fa164610b45125719ba006d1078f22806672ed0c36e98b01b5b11c6b40ebf46c94a5df27df0fb6de5718867ef6fd9d83f3a2cb79f54524ea8
   languageName: node
   linkType: hard
 
@@ -6333,21 +6331,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vue@npm:^3.4.26":
-  version: 3.4.31
-  resolution: "vue@npm:3.4.31"
+"vue@npm:^3.4.31":
+  version: 3.4.32
+  resolution: "vue@npm:3.4.32"
   dependencies:
-    "@vue/compiler-dom": 3.4.31
-    "@vue/compiler-sfc": 3.4.31
-    "@vue/runtime-dom": 3.4.31
-    "@vue/server-renderer": 3.4.31
-    "@vue/shared": 3.4.31
+    "@vue/compiler-dom": 3.4.32
+    "@vue/compiler-sfc": 3.4.32
+    "@vue/runtime-dom": 3.4.32
+    "@vue/server-renderer": 3.4.32
+    "@vue/shared": 3.4.32
   peerDependencies:
     typescript: "*"
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: f7bd1470a54a6fafe86a27e05b05a29bb1caaa5f02444840688398568f84373a06bdd402700b7460c316fe38ef8b668a882a09096ee52d1283cf2bf5b0d32e41
+  checksum: dda301863537fd220e53020909978596e615544ca5aef0c190b223f35d491ee3caf8ca11989bc4bcf6fbd64f07ad7b2aaf8ce71ea6e40f5db412a77dc155bc1a
   languageName: node
   linkType: hard
 
@@ -6570,21 +6568,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"wistia-player-alternative@github:MMHK/wistia-player-alternative#player":
-  version: 1.0.2
-  resolution: "wistia-player-alternative@https://github.com/MMHK/wistia-player-alternative.git#commit=19b08bb69965afbfc7de0c01ccb9128a276093b8"
-  dependencies:
-    "@silvermine/videojs-quality-selector": ^1.3.1
-    "@videojs-player/vue": ^1.0.0
-    axios: ^1.6.8
-    normalize.css: ^8.0.1
-    video.js: ^8.12.0
-    videojs-sprite-thumbnails: ^2.2.1
-    vue: ^3.4.26
-  checksum: 423edc20bffe8624a6cad7f52ea672a774bccbb3afb6c62df4e7ee4504381be5d560b58d774a9df19f9ca4b1dc9d4397c709e7dd2926c428604e20a57bc70a57
-  languageName: node
-  linkType: hard
-
 "wistia-player-alternative@workspace:.":
   version: 0.0.0-use.local
   resolution: "wistia-player-alternative@workspace:."
@@ -6613,9 +6596,24 @@ __metadata:
     webpack: ^5.92.1
     webpack-cli: ^5.1.4
     webpack-dev-server: ^5.0.4
-    wistia-player-alternative: "github:MMHK/wistia-player-alternative#player"
+    wistia-s3-player: ^1.1.0
   languageName: unknown
   linkType: soft
+
+"wistia-s3-player@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "wistia-s3-player@npm:1.1.0"
+  dependencies:
+    "@silvermine/videojs-quality-selector": ^1.3.1
+    "@vue/runtime-dom": ^3.4.31
+    axios: ^1.6.8
+    normalize.css: ^8.0.1
+    video.js: ^8.12.0
+    videojs-sprite-thumbnails: ^2.2.1
+    vue: ^3.4.31
+  checksum: 6ca857a58c6ea56e2bd41eed834467c3d8fae3005c5b9253825d256c42fc5cfec9055a8d8cdd99d3fa52055e93a626e8052f40db7f47bfdd86513caa2e871ee1
+  languageName: node
+  linkType: hard
 
 "wrap-ansi-cjs@npm:wrap-ansi@^7.0.0":
   version: 7.0.0
