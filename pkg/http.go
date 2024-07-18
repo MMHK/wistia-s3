@@ -21,6 +21,7 @@ const TASK_STATUS_ERROR = "error"
 
 type HTTPService struct {
 	config *Config
+	uploadQueue chan bool
 }
 
 type APIStandardError struct {
@@ -64,6 +65,7 @@ func generateID() string {
 func NewHTTP(conf *Config) *HTTPService {
 	return &HTTPService{
 		config: conf,
+		uploadQueue: make(chan bool, conf.WistiaConf.WorkerLimit),
 	}
 }
 
@@ -229,8 +231,6 @@ func (s *HTTPService) FindVideoInfo(hashId string) (*WistiaRespVideo, error) {
 
 func (s *HTTPService) MoveVideoToS3(source *MultipleMediaBody, TaskId string) {
 	wg := sync.WaitGroup{}
-	helper := NewWistiaHelper(s.config.WistiaConf)
-	dbHelper := NewDBHelper(s.config.DBConf)
 
 	resultList := make([]*MoveToS3Result, len(source.HashList))
 
@@ -238,7 +238,13 @@ func (s *HTTPService) MoveVideoToS3(source *MultipleMediaBody, TaskId string) {
 		wg.Add(1)
 		go func(hashId string, taskId string, index int, wg *sync.WaitGroup) {
 			defer wg.Done()
+			defer func() {
+				<- s.uploadQueue
+			}()
+			s.uploadQueue <- true
 
+			helper := NewWistiaHelper(s.config.WistiaConf)
+			dbHelper := NewDBHelper(s.config.DBConf)
 			_, err := dbHelper.FindVideoInfo(hashId)
 			if err == nil {
 				cloudfrontJson, s3Json := helper.GenerateVideoInfoURL(hashId, s.config.Storage.S3)

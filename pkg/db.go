@@ -66,8 +66,12 @@ func (this *DBHelper) GetAllVideoInfo() ([]*WistiaRespVideo, error) {
 	defer db.Close()
 
 
-	err = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("media"))
+	err = db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("media"))
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
 
 		c := bucket.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -100,8 +104,12 @@ func (this *DBHelper) FindVideoInfo(hashId string) (*WistiaRespVideo, error) {
 
 	var info WistiaRespVideo
 
-	err = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("media"))
+	err = db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("media"))
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
 
 		bin := bucket.Get([]byte(hashId))
 		return json.Unmarshal(bin, &info)

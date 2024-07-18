@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -99,7 +100,11 @@ func (this *S3Storage) PutStream(reader io.Reader, Key string, opt *UploadOption
 		publicflag = aws.String("public-read")
 	}
 
-	info, err := uploader.Upload(&s3manager.UploadInput{
+	// 创建一个带有超时的上下文
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute * 30)
+	defer cancel()
+
+	info, err := uploader.UploadWithContext(ctx, &s3manager.UploadInput{
 		Bucket:      aws.String(this.Conf.Bucket),
 		Key:         aws.String(path),
 		Body:        reader,
