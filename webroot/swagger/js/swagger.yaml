@@ -71,6 +71,14 @@ paths:
           required: true
           schema:
             type: string
+        - name: forceRefresh
+          in: query
+          description: 强制重新迁移，覆盖原来数据
+          schema:
+            type: string
+            enum: 
+              - true
+              - false
       responses:
         500:
           description: API报错
@@ -85,6 +93,15 @@ paths:
       summary: 批量迁移Video到S3
       description: <p>批量迁移Video到S3</p>
       operationId: "multiple-move"
+      parameters:
+        - name: forceRefresh
+          in: query
+          description: 强制重新迁移，覆盖原来数据
+          schema:
+            type: string
+            enum: 
+              - true
+              - false
       requestBody: 
         required: true
         content: 

@@ -2348,6 +2348,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"babel-plugin-dynamic-import-node@npm:^2.3.3":
+  version: 2.3.3
+  resolution: "babel-plugin-dynamic-import-node@npm:2.3.3"
+  dependencies:
+    object.assign: ^4.1.0
+  checksum: c9d24415bcc608d0db7d4c8540d8002ac2f94e2573d2eadced137a29d9eab7e25d2cbb4bc6b9db65cf6ee7430f7dd011d19c911a9a778f0533b4a05ce8292c9b
+  languageName: node
+  linkType: hard
+
 "babel-plugin-polyfill-corejs2@npm:^0.4.10":
   version: 0.4.11
   resolution: "babel-plugin-polyfill-corejs2@npm:0.4.11"
@@ -2541,7 +2550,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"call-bind@npm:^1.0.7":
+"call-bind@npm:^1.0.5, call-bind@npm:^1.0.7":
   version: 1.0.7
   resolution: "call-bind@npm:1.0.7"
   dependencies:
@@ -2935,7 +2944,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"define-data-property@npm:^1.1.4":
+"define-data-property@npm:^1.0.1, define-data-property@npm:^1.1.4":
   version: 1.1.4
   resolution: "define-data-property@npm:1.1.4"
   dependencies:
@@ -2950,6 +2959,17 @@ __metadata:
   version: 3.0.0
   resolution: "define-lazy-prop@npm:3.0.0"
   checksum: 54884f94caac0791bf6395a3ec530ce901cf71c47b0196b8754f3fd17edb6c0e80149c1214429d851873bb0d689dbe08dcedbb2306dc45c8534a5934723851b6
+  languageName: node
+  linkType: hard
+
+"define-properties@npm:^1.2.1":
+  version: 1.2.1
+  resolution: "define-properties@npm:1.2.1"
+  dependencies:
+    define-data-property: ^1.0.1
+    has-property-descriptors: ^1.0.0
+    object-keys: ^1.1.1
+  checksum: b4ccd00597dd46cb2d4a379398f5b19fca84a16f3374e2249201992f36b30f6835949a9429669ee6b41b6e837205a163eadd745e472069e70dfc10f03e5fcc12
   languageName: node
   linkType: hard
 
@@ -3713,7 +3733,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"has-property-descriptors@npm:^1.0.2":
+"has-property-descriptors@npm:^1.0.0, has-property-descriptors@npm:^1.0.2":
   version: 1.0.2
   resolution: "has-property-descriptors@npm:1.0.2"
   dependencies:
@@ -4899,6 +4919,25 @@ __metadata:
   version: 1.13.2
   resolution: "object-inspect@npm:1.13.2"
   checksum: 9f850b3c045db60e0e97746e809ee4090d6ce62195af17dd1e9438ac761394a7d8ec4f7906559aea5424eaf61e35d3e53feded2ccd5f62fcc7d9670d3c8eb353
+  languageName: node
+  linkType: hard
+
+"object-keys@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "object-keys@npm:1.1.1"
+  checksum: b363c5e7644b1e1b04aa507e88dcb8e3a2f52b6ffd0ea801e4c7a62d5aa559affe21c55a07fd4b1fd55fc03a33c610d73426664b20032405d7b92a1414c34d6a
+  languageName: node
+  linkType: hard
+
+"object.assign@npm:^4.1.0":
+  version: 4.1.5
+  resolution: "object.assign@npm:4.1.5"
+  dependencies:
+    call-bind: ^1.0.5
+    define-properties: ^1.2.1
+    has-symbols: ^1.0.3
+    object-keys: ^1.1.1
+  checksum: f9aeac0541661370a1fc86e6a8065eb1668d3e771f7dbb33ee54578201336c057b21ee61207a186dd42db0c62201d91aac703d20d12a79fc79c353eed44d4e25
   languageName: node
   linkType: hard
 
@@ -6579,6 +6618,7 @@ __metadata:
     "@babel/preset-env": ^7.24.7
     "@babel/runtime": ^7.24.7
     babel-loader: ^9.1.3
+    babel-plugin-dynamic-import-node: ^2.3.3
     clean-webpack-plugin: ^4.0.0
     clipboard: ^2.0.11
     core-js: ^3.37.1
@@ -6596,13 +6636,13 @@ __metadata:
     webpack: ^5.92.1
     webpack-cli: ^5.1.4
     webpack-dev-server: ^5.0.4
-    wistia-s3-player: ^1.1.0
+    wistia-s3-player: ^1.1.18
   languageName: unknown
   linkType: soft
 
-"wistia-s3-player@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "wistia-s3-player@npm:1.1.0"
+"wistia-s3-player@npm:^1.1.18":
+  version: 1.1.18
+  resolution: "wistia-s3-player@npm:1.1.18"
   dependencies:
     "@silvermine/videojs-quality-selector": ^1.3.1
     "@vue/runtime-dom": ^3.4.31
@@ -6611,7 +6651,7 @@ __metadata:
     video.js: ^8.12.0
     videojs-sprite-thumbnails: ^2.2.1
     vue: ^3.4.31
-  checksum: 6ca857a58c6ea56e2bd41eed834467c3d8fae3005c5b9253825d256c42fc5cfec9055a8d8cdd99d3fa52055e93a626e8052f40db7f47bfdd86513caa2e871ee1
+  checksum: 342eb661106018c484ac522c50bbbfa7201fdbf3a42a0faf657cf42ca268dcbfb582a789575316f3b62532ea5b42c4070a03be3f36d812719020733365c1da27
   languageName: node
   linkType: hard
 

@@ -45,6 +45,10 @@ type MultipleMediaBody struct {
 	HashList []string `json:"media"`
 }
 
+type MoveToS3Options struct {
+	OverRider bool
+}
+
 type MoveToS3Result struct {
 	HashId     string `json:"hash"`
 	CloudFront string `json:"cloudfront"`
@@ -179,6 +183,16 @@ func (s *HTTPService) VideoToS3(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	videoHash := params["hash"]
 
+	queryParams := r.URL.Query()
+	refresh := queryParams.Get("forceRefresh")
+	opt := &MoveToS3Options{
+		OverRider: false,
+	}
+	if refresh == "true" {
+		opt.OverRider = true
+	}
+
+
 	if len(videoHash) > 0 {
 		list.HashList = append(list.HashList, videoHash)
 	} else {
@@ -202,7 +216,7 @@ func (s *HTTPService) VideoToS3(w http.ResponseWriter, r *http.Request) {
 	tasks[taskID] = task
 	tasksMu.Unlock()
 
-	go s.MoveVideoToS3(list, taskID)
+	go s.MoveVideoToS3(list, taskID, opt)
 
 	s.ResponseJSON(task, w)
 }
@@ -229,8 +243,12 @@ func (s *HTTPService) FindVideoInfo(hashId string) (*WistiaRespVideo, error) {
 	return dbHelper.FindVideoInfo(hashId)
 }
 
-func (s *HTTPService) MoveVideoToS3(source *MultipleMediaBody, TaskId string) {
+func (s *HTTPService) MoveVideoToS3(source *MultipleMediaBody, TaskId string, options *MoveToS3Options) {
 	wg := sync.WaitGroup{}
+	overRider := false
+	if options != nil && options.OverRider {
+		overRider = true
+	}
 
 	resultList := make([]*MoveToS3Result, len(source.HashList))
 
@@ -243,19 +261,22 @@ func (s *HTTPService) MoveVideoToS3(source *MultipleMediaBody, TaskId string) {
 			}()
 			s.uploadQueue <- true
 
-			helper := NewWistiaHelper(s.config.WistiaConf)
-			dbHelper := NewDBHelper(s.config.DBConf)
-			_, err := dbHelper.FindVideoInfo(hashId)
-			if err == nil {
-				cloudfrontJson, s3Json := helper.GenerateVideoInfoURL(hashId, s.config.Storage.S3)
 
-				resultList[index] = &MoveToS3Result{
-					HashId:     hashId,
-					Status:     true,
-					S3:         s3Json,
-					CloudFront: cloudfrontJson,
+			helper := NewWistiaHelper(s.config.WistiaConf)
+			if !overRider {
+				dbHelper := NewDBHelper(s.config.DBConf)
+				_, err := dbHelper.FindVideoInfo(hashId)
+				if err == nil {
+					cloudfrontJson, s3Json := helper.GenerateVideoInfoURL(hashId, s.config.Storage.S3)
+
+					resultList[index] = &MoveToS3Result{
+						HashId:     hashId,
+						Status:     true,
+						S3:         s3Json,
+						CloudFront: cloudfrontJson,
+					}
+					return
 				}
-				return
 			}
 
 			cloudFrontJson, s3Json, err := helper.MoveToS3(hashId, s.config.Storage.S3)

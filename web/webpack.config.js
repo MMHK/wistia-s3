@@ -113,7 +113,8 @@ const config = {
 									loose: true
 								}],
 								"@babel/plugin-transform-runtime",
-								"@babel/plugin-syntax-dynamic-import"
+								"@babel/plugin-syntax-dynamic-import",
+                "dynamic-import-node"
 							],
 
 							presets: [
@@ -134,7 +135,9 @@ const config = {
 	},
 
 	optimization: {
-		minimizer: [
+    splitChunks: IS_DEVSERVER ? true : false,
+    runtimeChunk: IS_DEVSERVER ? true : false,
+    minimizer: [
 			new TerserWebpackPlugin({
 				extractComments: false,
 				terserOptions: {
@@ -158,7 +161,7 @@ const config = {
 	devServer: {
 		open: true,
 		compress: true,
-    hot: IS_DEVSERVER,
+    hot: !!(IS_DEVSERVER),
 		static: {
 			directory: path.join(__dirname, 'dist'),
 		},
