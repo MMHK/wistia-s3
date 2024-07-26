@@ -3,10 +3,12 @@ package pkg
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -154,6 +156,58 @@ func (this *WistiaHelper) GetVideoDetail(hashId string) (*WistiaRespVideo , erro
 	return videoResult, nil
 }
 
+
+func (this *WistiaHelper) ArchiveVideos(videoHashList []string) error {
+	baseURL := fmt.Sprintf("%s/medias/archive.json", WISTIA_API_ENDPOINT)
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	query := u.Query()
+	for _, hashId := range videoHashList {
+		query.Add("hashed_ids[]", hashId)
+	}
+
+	u.RawQuery = query.Encode()
+
+	Log.Debugf("Upload URL: %s\n", u.String())
+
+	req, err := http.NewRequest( "PUT", u.String(), nil)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", this.Conf.WistiaApiKey))
+
+	client := &http.Client{
+		Timeout:   60 * time.Second, // 总体请求超时
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	bin, err := io.ReadAll(resp.Body)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	Log.Debug(string(bin))
+
+	if resp.StatusCode != 200 {
+		return errors.New(string((bin)))
+	}
+
+
+	return nil
+}
+
 type DelimsOptions struct {
 	Start string
 	End   string
@@ -236,15 +290,7 @@ func (this *WistiaHelper) UploadWistiaS3JS(conf *S3Config) (string, string, erro
 	return "", s3Url, nil
 }
 
-func (this *WistiaHelper) UploadDemoPage(video *WistiaRespVideo, conf *S3Config, wg *sync.WaitGroup) (string, string, error) {
-	if wg != nil {
-		defer wg.Done()
-	}
-	defer func() {
-		<-this.queue
-	}()
-	this.queue <- true
-
+func (this *WistiaHelper) UploadDemoPage(tplName string, video *WistiaRespVideo, conf *S3Config, wg *sync.WaitGroup) (string, string, error) {
 	data := TemplateData{
 		HashId:        video.HashId,
 		MediaEndPoint: fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media", conf.Region, conf.Bucket, conf.PrefixPath),
@@ -258,7 +304,13 @@ func (this *WistiaHelper) UploadDemoPage(video *WistiaRespVideo, conf *S3Config,
 		return "", "", err
 	}
 
-	tplName := "index.html"
+	if wg != nil {
+		defer wg.Done()
+	}
+	defer func() {
+		<-this.queue
+	}()
+	this.queue <- true
 
 	remoteKey := fmt.Sprintf("media/%s/%s", video.HashId, tplName)
 	Log.Infof("generate %s => %s\n", tplName, remoteKey)
@@ -377,12 +429,13 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 		}(asset, &wg)
 	}
 
-	counter := 1
+	counter := 2
 	if conf.UseCloudFront() {
-		counter = 2
+		counter = 4
 	}
 	wg.Add(counter)
-	go this.UploadDemoPage(video, conf, &wg)
+	go this.UploadDemoPage("index.html", video, conf, &wg)
+	go this.UploadDemoPage("demo.html", video, conf, &wg)
 
 	wg.Wait()
 

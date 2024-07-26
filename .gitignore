@@ -5,3 +5,4 @@
 .yarn
 node_modules
 /*.db
+/web/.env

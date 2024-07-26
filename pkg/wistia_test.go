@@ -166,7 +166,7 @@ func TestWistiaHelper_UploadDemoPage(t *testing.T) {
 		return
 	}
 
-	cfUrl, s3Url, err := helper.UploadDemoPage(videoData, s3Conf, nil)
+	cfUrl, s3Url, err := helper.UploadDemoPage("index.html", videoData, s3Conf, nil)
 	if err != nil {
 		t.Error(err)
 		t.Fail()
@@ -174,6 +174,64 @@ func TestWistiaHelper_UploadDemoPage(t *testing.T) {
 	}
 	t.Logf("cloudfront: %s\n", cfUrl)
 	t.Logf("s3: %s\n", s3Url)
+
+
+	cfUrl, s3Url, err = helper.UploadDemoPage("demo.html", videoData, s3Conf, nil)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+	t.Logf("cloudfront: %s\n", cfUrl)
+	t.Logf("s3: %s\n", s3Url)
+
+	t.Log("PASS")
+}
+
+func TestWistiaHelper_reUploadAllDemoPage(t *testing.T) {
+	conf := new(WistiaConf)
+	conf.MarginWithENV()
+	helper := NewWistiaHelper(conf)
+	s3Conf := loadS3Config()
+
+	type videoList struct {
+		Data []*WistiaRespVideo `json:"data"`
+	}
+	var list videoList
+
+	bin, err := os.ReadFile(os.Getenv("ALL_VIDEO_JSON"))
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+
+	err = json.Unmarshal(bin, &list)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+
+	for _, videoData := range list.Data {
+		cfUrl, s3Url, err := helper.UploadDemoPage("index.html", videoData, s3Conf, nil)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		t.Logf("cloudfront: %s\n", cfUrl)
+		t.Logf("s3: %s\n", s3Url)
+
+
+		cfUrl, s3Url, err = helper.UploadDemoPage("demo.html", videoData, s3Conf, nil)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		t.Logf("cloudfront: %s\n", cfUrl)
+		t.Logf("s3: %s\n", s3Url)
+	}
+
 	t.Log("PASS")
 }
 
@@ -188,4 +246,18 @@ func TestWistiaHelper_GenerateVideoInfoURL(t *testing.T) {
 	cloudfrontJson, s3Json := helper.GenerateVideoInfoURL("7bg0z4stnx", s3Conf)
 	t.Log(cloudfrontJson)
 	t.Log(s3Json)
+}
+
+func TestWistiaHelper_ArchiveVideos(t *testing.T) {
+	conf := new(WistiaConf)
+	conf.MarginWithENV()
+	helper := NewWistiaHelper(conf)
+
+	err := helper.ArchiveVideos([]string{"thm6u6imgj"})
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+	t.Log("PASS")
 }
