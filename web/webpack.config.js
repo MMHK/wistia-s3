@@ -1,8 +1,14 @@
 const path = require("path");
+const fs = require('fs');
 const webpack = require("webpack");
+const dotenv = require('dotenv');
+dotenv.config().parsed;
+
 
 const IS_DEVSERVER = process.env.WEBPACK_DEV_SERVER || process.env.WEBPACK_SERVE;
-
+const VIDEO_NAME = process.env.VIDEO_NAME || 'Demo Video';
+const HASH_ID = process.env.HASH_ID || 'testHashId';
+const WISTIA_S3_JS_URL = process.env.WISTIA_S3_JS_URL || 'unknown_url';
 
 /*
  * SplitChunksPlugin is enabled by default and replaced
@@ -55,11 +61,40 @@ const config = {
 		new webpack.ProgressPlugin(),
 		new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
-      filename: "index.html",
-      template: path.relative(__dirname, "src/index.html"),
+      filename: "demo.html",
+      template: path.relative(__dirname, "src/demo.html"),
+      templateContent: !IS_DEVSERVER ? false :({ htmlWebpackPlugin }) => {
+        let template = fs.readFileSync(path.resolve(__dirname, 'src/demo.html'), 'utf8');
+        return template.replace(/\{\{\.([^\}\.]+)\}\}/g, (match, p1) => {
+          return htmlWebpackPlugin.options.templateParameters[p1] | '';
+        });
+      },
       // hash: true,
       inject: "body",
-      excludeAssets: [/wistia-s3.min.js/]
+      excludeAssets: [/wistia-s3.min.js/],
+      templateParameters: {
+        VideoName: VIDEO_NAME,
+        HashId: HASH_ID,
+        WistiaS3JSUrl: WISTIA_S3_JS_URL,
+      },
+    }),
+    new HtmlWebpackPlugin({
+      filename: "index.html",
+      template: path.relative(__dirname, "src/index.html"),
+      templateContent: !IS_DEVSERVER ? false :({ htmlWebpackPlugin }) => {
+        let template = fs.readFileSync(path.resolve(__dirname, 'src/index.html'), 'utf8');
+        return template.replace(/\{\{\.([^\}\.]+)\}\}/g, (match, p1) => {
+          return htmlWebpackPlugin.options.templateParameters[p1] || '';
+        });
+      },
+      // hash: true,
+      inject: "body",
+      excludeAssets: [/wistia-s3.min.js/, /wistia-s3.js/, /demo.js/],
+      templateParameters: {
+        VideoName: VIDEO_NAME,
+        HashId: HASH_ID,
+        WistiaS3JSUrl: WISTIA_S3_JS_URL,
+      },
     }),
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
@@ -69,10 +104,12 @@ const config = {
       ignoreOrder: false, // Enable to remove warnings about conflicting order
     }),
 
-  ].concat(IS_DEVSERVER ? []: [
+  ].concat(IS_DEVSERVER ? [
+    new HtmlWebpackExcludeAssetsPlugin(),
+  ]: [
     new HTMLInlineCSSWebpackPlugin(),
     new HtmlInlineScriptPlugin({
-      htmlMatchPattern: [/index.html$/],
+      htmlMatchPattern: [/demo.html$/],
       scriptMatchPattern: [/demo.min.js$/],
     }),
     new HtmlWebpackExcludeAssetsPlugin(),
@@ -135,8 +172,8 @@ const config = {
 	},
 
 	optimization: {
-    splitChunks: IS_DEVSERVER ? true : false,
-    runtimeChunk: IS_DEVSERVER ? true : false,
+    splitChunks: IS_DEVSERVER ? {} : false,
+    runtimeChunk: IS_DEVSERVER ? {} : false,
     minimizer: [
 			new TerserWebpackPlugin({
 				extractComments: false,

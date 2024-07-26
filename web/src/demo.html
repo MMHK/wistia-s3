@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.VideoName}}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        h3 {
+            margin: 0;
+            padding: 0.5em;
+        }
+        pre {
+            margin: 0;
+        }
+        main {
+            width: 90vw;
+            max-width: 1240px;
+        }
+        .preview, .code-sample {
+            margin: 2em;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+        }
+        .code-container {
+            background-color: black;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<main>
+    <div class="preview">
+        <h3>Preview: </h3>
+        <div class="wistia_responsive_padding">
+            <div class="wistia_responsive_wrapper">
+                <div class="wistia_embed wistia_async_{{.HashId}} videoFoam=true playsinline=true" style="height:100%;width:100%">&nbsp;</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="code-sample">
+        <h3>How to embed: </h3>
+        <div class="code-container">
+            <button class="copy-btn" data-clipboard-target="#code-block-1">COPY</button>
+            <pre><code id="code-block-1"></code></pre>
+        </div>
+    </div>
+
+</main>
+<script type="application/javascript" src="{{.WistiaS3JSUrl}}"></script>
+</body>
+</html>
