@@ -58,6 +58,7 @@ export default defineComponent({
       hash_id_error: false,
       thumbnail_data: {},
       videoName: "",
+      playerInstance: null,
     }
   },
 
@@ -113,6 +114,8 @@ export default defineComponent({
             this.watcher.start();
           });
 
+          this.playerInstance = player;
+
           player.on('error', function(err) {
             console.log(err)
             var errorDisplayElem = document.querySelector('.vjs-error-display .vjs-modal-dialog-content');
@@ -136,6 +139,13 @@ export default defineComponent({
             }
           });
 
+          player.on('ratechange', () => {
+            //fixed: 没有移除自定义类名，导致菜单关闭失败
+            const playbackRateMenuButton = player.controlBar.getChild('playbackRateMenuButton');
+            playbackRateMenuButton.removeClass('open-menu');
+            playbackRateMenuButton.addClass('close-menu');
+          });
+
           player.ready(() => {
             localStorage.removeItem(`video-${this.id}-qualityChange`);
             player.addChild('CustomPlayPauseButton', { className: 'custom-play-pause-btn vjs-play-control vjs-control vjs-button'});
@@ -144,6 +154,11 @@ export default defineComponent({
             player.on('qualitySelected', () => {
               player.addClass('vjs-waiting');
               localStorage.setItem(`video-${this.id}-qualityChange`, true);
+
+              //fixed: 没有移除自定义类名，导致画质菜单关闭失败
+              const qualitySelectorButton = this.playerInstance.controlBar.getChild('qualitySelector');
+              qualitySelectorButton.removeClass('open-menu');
+              qualitySelectorButton.addClass('close-menu');
             });
 
             player.on('seeked', () => {
@@ -166,7 +181,8 @@ export default defineComponent({
               }
             });
             
-          });
+            this.handleRateQualityChange(player);
+          })
         })
       })
       .catch((err)=>{
@@ -180,6 +196,12 @@ export default defineComponent({
     if (this.watcher) {
       this.watcher.stop();
     }
+    const playbackRateMenuButton = this.playerInstance.controlBar.getChild('playbackRateMenuButton');
+    const qualitySelectorButton = this.playerInstance.controlBar.getChild('qualitySelector');
+    playbackRateMenuButton.off('click', this.playbackRateClickHandler);
+    qualitySelectorButton.off('click', this.qualitySelectorClickHandler);
+    document.removeEventListener('click', this.globalClickHandler);
+    document.removeEventListener('touchend', this.globalTouchEndHandler);
   },
 
   methods: {
@@ -216,7 +238,80 @@ export default defineComponent({
         console.log(error);
       });
     },
-  }
+
+    // 处理倍速与画质菜单的显隐
+    handleRateQualityChange(player) {
+      const playbackRateMenuButton = player.controlBar.getChild('playbackRateMenuButton');
+      const qualitySelectorButton = player.controlBar.getChild('qualitySelector');
+      
+      //fixed:倍速/画质按钮互相切换的时候，没有关闭对应的菜单
+      const toggleMenu = (button, otherButton) => {
+        if (button.hasClass('open-menu')) {
+          button.removeClass('open-menu');
+          button.addClass('close-menu');
+        } else {
+          button.addClass('open-menu');
+          button.removeClass('close-menu');
+          otherButton.removeClass('open-menu');
+          otherButton.addClass('close-menu');
+        }
+      };
+
+      //fixed: 重复点击倍速btn无法关闭菜单
+      this.playbackRateClickHandler = (event) => {
+        event.stopImmediatePropagation();
+        toggleMenu(playbackRateMenuButton, qualitySelectorButton);
+      };
+
+      //fixed: 重复点击画质btn无法关闭菜单
+      this.qualitySelectorClickHandler = (event) => {
+        event.stopImmediatePropagation();
+        toggleMenu(qualitySelectorButton, playbackRateMenuButton);
+      };
+
+      // fixed: click外部空白区域 无法关闭倍速/画质菜单
+      this.globalClickHandler = (event) => {
+        if (!playbackRateMenuButton.el().contains(event.target)) {
+          playbackRateMenuButton.removeClass('open-menu');
+          playbackRateMenuButton.addClass('close-menu');
+        }
+
+        if (!qualitySelectorButton.el().contains(event.target)) {
+          qualitySelectorButton.removeClass('open-menu');
+          qualitySelectorButton.addClass('close-menu');
+        }
+      };
+
+      // fixed: touch外部空白区域 无法关闭倍速/画质菜单
+      this.globalTouchEndHandler = (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        if (!playbackRateMenuButton.el().contains(event.target) && !qualitySelectorButton.el().contains(event.target)) {
+          playbackRateMenuButton.removeClass('open-menu');
+          playbackRateMenuButton.addClass('close-menu');
+          qualitySelectorButton.removeClass('open-menu');
+          qualitySelectorButton.addClass('close-menu');
+        }
+
+        // fixed: touch过外部空白区域之后，再点击倍速按钮，无法展开倍速菜单
+        if (playbackRateMenuButton.el().contains(event.target)) {
+          toggleMenu(playbackRateMenuButton, qualitySelectorButton);
+        }
+
+        // fixed: touch过外部空白区域之后，再点击画质按钮，无法展开画质菜单
+        if (qualitySelectorButton.el().contains(event.target)) {
+          toggleMenu(qualitySelectorButton, playbackRateMenuButton);
+        }
+      };
+
+      playbackRateMenuButton.on('click', this.playbackRateClickHandler);
+      qualitySelectorButton.on('click', this.qualitySelectorClickHandler);
+      document.addEventListener('click', this.globalClickHandler);
+      document.addEventListener('touchend', this.globalTouchEndHandler);
+    },
+
+  },
+
 });
 </script>
 
@@ -469,6 +564,21 @@ export default defineComponent({
 
     .vjs-quality-selector .vjs-menu .vjs-menu-content {
       left: 0;
+    }
+
+    .vjs-playback-rate,
+    .vjs-quality-selector{
+      &.close-menu{
+        .vjs-menu{
+          display: none !important;
+        }
+      }
+
+      &.open-menu {
+        .vjs-menu{
+          display: block !important;
+        }
+      }
     }
 
     .vjs-playback-rate.vjs-control{
