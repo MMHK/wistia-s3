@@ -3,7 +3,8 @@
   import("wistia-s3-player/dist/js/wistia-s3-player.min")
     .then((module) => {
       const init = module.default || module;
-      init();
+      const trackingID = "{{.TrackingID}}";
+      init(trackingID);
     });
 })({
   ...window,

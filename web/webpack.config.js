@@ -89,7 +89,7 @@ const config = {
       },
       // hash: true,
       inject: "body",
-      excludeAssets: [/wistia-s3.min.js/, /wistia-s3.js/, /demo.js/],
+      excludeAssets: [/wistia-s3.min.js/, /wistia-s3.js/, /demo.js/, /demo.min.js/],
       templateParameters: {
         VideoName: VIDEO_NAME,
         HashId: HASH_ID,
@@ -168,6 +168,18 @@ const config = {
 					},
 				],
 			},
+      {
+        test: /\.(eot|svg|ttf|woff|woff2|ico|png|gif|jpeg|jpg)$/i,
+        type: 'asset',
+        generator: {
+          filename: 'assets/[hash][ext][query]'
+        },
+        parser: {
+          dataUrlCondition: {
+            maxSize: 200 * 1024 // 200kb
+          }
+        },
+      },
 		]
 	},
 

@@ -25,6 +25,7 @@ type TemplateData struct {
 	VideoName     string
 	WistiaS3JSUrl string
 	HashId 	      string
+	TrackingID	  string
 }
 
 type WistiaRespVideoAsset struct {
@@ -97,6 +98,7 @@ type WistiaConf struct {
 	WistiaApiKey    string `json:"wistia_api_key"`
 	WorkerLimit     int    `json:"worker_limit"`
 	TemplateDirPath string `json:"template_dir_path"`
+	GATrackingId    string `json:"ga_tracking_id"`
 }
 
 func (this *WistiaConf) MarginWithENV() *WistiaConf {
@@ -112,6 +114,10 @@ func (this *WistiaConf) MarginWithENV() *WistiaConf {
 
 	if this.TemplateDirPath == "" {
 		this.TemplateDirPath = os.Getenv("TEMPLATE_DIR_PATH")
+	}
+
+	if len(this.GATrackingId) <= 0 {
+		this.GATrackingId = os.Getenv("GA_TRACKING_ID")
 	}
 
 	return this
@@ -253,6 +259,7 @@ func (this *WistiaHelper) UploadWistiaS3JS(conf *S3Config) (string, string, erro
 
 	data := TemplateData{
 		MediaEndPoint: fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media", conf.Region, conf.Bucket, conf.PrefixPath),
+		TrackingID: this.Conf.GATrackingId,
 	}
 	remoteKey := fmt.Sprintf("media/%s", jsPath)
 	reader, err := this.BuildTemplate(jsPath, &data)

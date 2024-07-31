@@ -6644,13 +6644,13 @@ __metadata:
     webpack: ^5.92.1
     webpack-cli: ^5.1.4
     webpack-dev-server: ^5.0.4
-    wistia-s3-player: ^1.1.18
+    wistia-s3-player: ^1.1.22
   languageName: unknown
   linkType: soft
 
-"wistia-s3-player@npm:^1.1.18":
-  version: 1.1.18
-  resolution: "wistia-s3-player@npm:1.1.18"
+"wistia-s3-player@npm:^1.1.22":
+  version: 1.1.22
+  resolution: "wistia-s3-player@npm:1.1.22"
   dependencies:
     "@silvermine/videojs-quality-selector": ^1.3.1
     "@vue/runtime-dom": ^3.4.31
@@ -6659,7 +6659,7 @@ __metadata:
     video.js: ^8.12.0
     videojs-sprite-thumbnails: ^2.2.1
     vue: ^3.4.31
-  checksum: 342eb661106018c484ac522c50bbbfa7201fdbf3a42a0faf657cf42ca268dcbfb582a789575316f3b62532ea5b42c4070a03be3f36d812719020733365c1da27
+  checksum: a31fc6b274c9ae16444b21fd34e869624e889519c336c7a810ff661014579dcb56cc3b38696ccfbef6c95728cf0402712808a32fe10e776cc960402a6e4d0513
   languageName: node
   linkType: hard
 

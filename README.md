@@ -53,6 +53,7 @@
 - `LOG_LEVEL`：日志级别，例如 `INFO`、`DEBUG` 等。
 - `TZ`：时区，例如 `Asia/Hong_Kong`。
 - `LISTEN`：应用监听的地址和端口，例如 `0.0.0.0:3031`。
+- `DB_FILE_PATH`：数据库文件的路径。
 - `WEBROOT`：Web 根目录路径。
 
 ## 使用 Docker Compose
@@ -85,6 +86,7 @@
           - LOG_LEVEL=INFO
           - TZ=Asia/Hong_Kong
           - LISTEN=0.0.0.0:3031
+          - DB_FILE_PATH=/app/wista-s3.db
           - WEBROOT=/app/webroot
     ```
 
