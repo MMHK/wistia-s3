@@ -1,5 +1,11 @@
 version: "3"
 services:
+  build-img:
+    image: "mmhk/wistia-s3"
+    build:
+      context: .
+      dockerfile: Dockerfile
+
   email2db:
     image: "mmhk/wistia-s3"
     restart: always

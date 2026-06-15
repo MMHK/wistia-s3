@@ -6,3 +6,4 @@
 node_modules
 /*.db
 /web/.env
+/config.json

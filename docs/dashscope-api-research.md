@@ -287,6 +287,149 @@ Task status query: default 20 QPS, max 100 QPS. For high-concurrency, configure 
 
 ---
 
+## 2B. Qwen-ASR File Transcription (qwen3-asr-flash-filetrans)
+
+**This is the transcription model used in this project.**
+
+### Overview
+
+| Property | Value |
+|----------|-------|
+| Model name | `qwen3-asr-flash-filetrans` |
+| Max duration | 12 hours |
+| Max file size | 2 GB |
+| Access method | DashScope async only (no OpenAI-compatible, no sync) |
+| Input | Public file URL (no local file, no base64) |
+| Timestamps | Sentence-level (always), word-level (optional via `enable_words`) |
+| Languages | zh, yue, en, ja, ko, de, fr, es, it, pt, ru, ar, hi, id, th, tr, uk, vi, cs, da, fil, fi, is, ms, no, pl, sv |
+| ITN | Supported (zh/en only) via `enable_itn` |
+| Emotion detection | Supported (per sentence) |
+
+### API Flow (3-step async, same as Fun-ASR)
+
+1. **Submit** → POST `/api/v1/services/audio/asr/transcription` with `X-DashScope-Async: enable`
+2. **Poll** → GET `/api/v1/tasks/{task_id}` (no `X-DashScope-Async` header needed)
+3. **Download** → GET `output.result.transcription_url` (valid 24h)
+
+### Key Differences from Fun-ASR
+
+| Feature | Fun-ASR | qwen3-asr-flash-filetrans |
+|---------|---------|---------------------------|
+| Input field | `input.file_urls` (array) | `input.file_url` (single string) |
+| Task result | `output.results[]` (array of subtasks) | `output.result.transcription_url` (single) |
+| Language param | `language_hints` | `language` (single) |
+| Emotion detection | No | Yes (`sentences[].emotion`) |
+| ITN control | No | Yes (`enable_itn`) |
+| Word-level timestamps | No explicit control | Yes (`enable_words`) |
+
+### Submit Request
+
+```json
+{
+  "model": "qwen3-asr-flash-filetrans",
+  "input": {
+    "file_url": "https://example.com/audio.mp3"
+  },
+  "parameters": {
+    "channel_id": [0],
+    "enable_itn": false,
+    "language": "zh"
+  }
+}
+```
+
+### Submit Response
+
+```json
+{
+  "request_id": "92e3decd-0c69-47a8-************",
+  "output": {
+    "task_id": "8fab76d0-0eed-4d20-************",
+    "task_status": "PENDING"
+  }
+}
+```
+
+### Poll Response (SUCCEEDED)
+
+```json
+{
+  "request_id": "1dca6c0a-0ed1-4662-aa39-********",
+  "output": {
+    "task_id": "8fab76d0-0eed-4d20-************",
+    "task_status": "SUCCEEDED",
+    "submit_time": "2025-10-27 13:57:45.948",
+    "scheduled_time": "2025-10-27 13:57:46.018",
+    "end_time": "2025-10-27 13:57:47.079",
+    "result": {
+      "transcription_url": "https://dashscope-result-sgp.oss-ap-southeast-1.aliyuncs.com/.../result.json"
+    }
+  },
+  "usage": {
+    "seconds": 3
+  }
+}
+```
+
+### Poll Response (FAILED)
+
+```json
+{
+  "request_id": "3d141841-858a-466a-9ff9-********",
+  "output": {
+    "task_id": "c58c7951-7789-4557-9ea3-********",
+    "task_status": "FAILED",
+    "code": "FILE_403_FORBIDDEN",
+    "message": "FILE_403_FORBIDDEN"
+  }
+}
+```
+
+### Transcription Result JSON
+
+```json
+{
+  "file_url": "https://example.com/audio.mp3",
+  "audio_info": {
+    "format": "mp3",
+    "sample_rate": 22050
+  },
+  "transcripts": [
+    {
+      "channel_id": 0,
+      "text": "Full text...",
+      "sentences": [
+        {
+          "sentence_id": 0,
+          "begin_time": 0,
+          "end_time": 1440,
+          "language": "zh",
+          "emotion": "neutral",
+          "text": "Sentence text.",
+          "words": [
+            {"begin_time": 0, "end_time": 160, "text": "字", "punctuation": ""}
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Go Structs (in pkg/dashscope.go)
+
+- `dashscopeFiletransRequest` (line 153) — submit body
+- `dashscopeFiletransParameters` (line 159) — with `ChannelId`, `EnableItn`, `Language`
+- `dashscopeFiletransSubmitResponse` (line 169) — submit response
+- `dashscopeFiletransTaskResponse` (line 197) — poll response
+- `dashscopeFiletransResult` (line 221) — transcription result file
+- `dashscopeFiletransSentence` (line 241) — with `Emotion`, `Words`
+- `dashscopeFiletransWord` (line 234) — word-level timestamp
+- `dashscopeMaaSEnvelope` (line 177) — MaaS response wrapper
+- `unwrapMaaSResponse()` (line 183) — transparent MaaS/standard handling
+
+---
+
 ## 3. Qwen3.5-Omni-Plus API (Video Understanding)
 
 ### Supports OpenAI-Compatible Format
@@ -752,7 +895,19 @@ func main() {
 
 ## 5. Gotchas and Limitations
 
-### Transcription
+### Transcription (qwen3-asr-flash-filetrans)
+1. **Only supports DashScope async** — no OpenAI-compatible mode, no sync mode.
+2. Audio files must be accessible via **public HTTPS URL** — no direct upload, no `oss://` via REST API, no base64 for file transcription.
+3. `transcription_url` expires after **24 hours** — download immediately.
+4. **`X-DashScope-Async: enable`** header is required ONLY on the POST submit, NOT on the GET poll.
+5. Polling QPS: default **20**, max **100**. Use callbacks for high throughput.
+6. `language` param accepts a single language code (not an array like Fun-ASR's `language_hints`).
+7. Emotion detection is returned per-sentence in `sentences[].emotion`.
+8. Word-level timestamps require `enable_words: true` in parameters.
+9. **MaaS workspace endpoints** (`{workspaceId}.maas.aliyuncs.com`) wrap responses in `{"code": "", "message": "", "data": {...}}`. Standard endpoints don't.
+10. Cantonese (`yue`) is supported but output is in Chinese characters (no standard written Cantonese form).
+
+### Transcription (Fun-ASR / Paraformer)
 1. **Paraformer is Beijing-only.** Use `fun-asr` for Singapore/international.
 2. Audio files must be accessible via **public HTTPS URL** — no direct upload (no multipart), no `oss://` via REST API, no base64 for file transcription.
 3. `transcription_url` expires after **24 hours** — download immediately.
@@ -780,11 +935,11 @@ func main() {
 
 | Gemini Feature | DashScope Replacement | Notes |
 |---------------|----------------------|-------|
-| Gemini file upload + transcription | Fun-ASR async API | Need public URL instead of upload |
-| Gemini video understanding | Qwen3.5-Omni-Plus | OpenAI-compatible API, streaming required |
+| Gemini file upload + transcription | qwen3-asr-flash-filetrans async API | Need public URL instead of upload |
+| Gemini video understanding | Qwen3.5-Omni-Plus / Qwen3.5-Omni-Flash | OpenAI-compatible API, streaming required |
 | Gemini timestamps | `sentences[].begin_time/end_time` | Milliseconds, sentence + word level |
-| Gemini language detection | `language_hints` parameter | Explicit language codes required |
-| Gemini Cantonese | `language_hints: ["yue"]` | Supported in Fun-ASR and Paraformer |
+| Gemini language detection | `language` param (single) or omit for auto | qwen3-asr-flash-filetrans auto-detects |
+| Gemini Cantonese | `language: "yue"` or omit for auto | Supported |
 
 ---
 
@@ -792,11 +947,12 @@ func main() {
 
 | Decision | Recommendation |
 |----------|---------------|
-| Transcription model | `fun-asr` (international) or `paraformer-v2` (Beijing) |
-| Video model | `qwen3.5-omni-plus` |
-| API format | OpenAI-compatible for video, DashScope native for transcription |
-| Region | Singapore (`dashscope-intl.aliyuncs.com`) |
+| Transcription model | `qwen3-asr-flash-filetrans` (async, up to 12h) |
+| Video model | `qwen3.5-omni-flash` or `qwen3.5-omni-plus` |
+| API format | DashScope native async for transcription, OpenAI-compatible for video |
+| Region | Singapore (`dashscope-intl.aliyuncs.com`) or MaaS workspace |
 | Auth | `Authorization: Bearer sk-xxx` |
 | Single API key | Yes, one key for both services |
 | Audio file delivery | Must be a public HTTPS URL |
-| Cantonese | Supported via `language_hints: ["yue"]` |
+| Cantonese | Supported (`language: "yue"` or auto-detect) |
+| MaaS endpoints | Supported via `unwrapMaaSResponse()` transparent handling |

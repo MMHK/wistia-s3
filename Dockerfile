@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine as builder
+FROM golang:1.24-alpine as builder
 
 # Add Maintainer Info
 LABEL maintainer="Sam Zhou <sam@mixmedia.com>"
@@ -11,9 +11,8 @@ COPY . .
 
 # Build the Go app
 RUN go version \
- && export GO111MODULE=on \
- && export GOPROXY=https://goproxy.io,direct \
  && go mod vendor \
+ && apk add --no-cache git ca-certificates \
  && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o wistia-s3 \
  && chmod +x wistia-s3
 

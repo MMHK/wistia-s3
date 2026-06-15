@@ -1,4 +1,12 @@
-# Video Indexing Feature — Gemini 2.5 Flash-Lite
+# Video Indexing Feature — DashScope (Qwen)
+
+> **Note**: This doc was originally written for the Gemini-based pipeline. The pipeline has been migrated to DashScope (Qwen) APIs. See [qwen-migration.md](./qwen-migration.md), [dashscope-api-research.md](./dashscope-api-research.md), and [qwen-asr-filetrans-migration.md](./qwen-asr-filetrans-migration.md) for the current implementation.
+>
+> Key changes:
+> - Transcription: `qwen3-asr-flash-filetrans` (DashScope async API, replaces Gemini audio transcription)
+> - Video analysis: `qwen3.5-omni-flash` (OpenAI-compatible streaming API, replaces Gemini video understanding)
+> - No ffmpeg required — pass video URL directly
+> - MaaS workspace endpoints supported
 
 ## Goal / Background
 

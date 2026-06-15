@@ -4,6 +4,10 @@
 
 Replace the Gemini-based video indexing pipeline with DashScope (Qwen) APIs. The pipeline produces subtitles (via audio transcription) and summary+chapters (via video analysis) for each Wistia video, stored as `index-ai.json` and `subtitles.vtt` on S3 and BoltDB.
 
+## Status: ✅ Implemented
+
+The migration is complete. See [dashscope-struct-fix.md](./dashscope-struct-fix.md) and [qwen-asr-filetrans-migration.md](./qwen-asr-filetrans-migration.md) for the final implementation details.
+
 ## Background
 
 The current pipeline (`pkg/gemini.go` + `pkg/http.go:indexVideoToS3`) works in two steps:
@@ -11,10 +15,12 @@ The current pipeline (`pkg/gemini.go` + `pkg/http.go:indexVideoToS3`) works in t
 1. **Audio transcription**: ffmpeg extracts WAV → upload to Gemini File API → Gemini audio transcription → subtitle entries (start/end/text)
 2. **Video analysis**: Video URL → Gemini video understanding → JSON with summary + chapter entries
 
-This is being replaced with:
+This was replaced with:
 
-1. **Audio transcription**: Video URL (mp4) → **Fun-ASR** (DashScope async API) → sentence-level subtitles with ms timestamps
-2. **Video analysis**: Video URL → **Qwen3.5-Omni-Plus** (DashScope OpenAI-compatible streaming API) → summary + chapters
+1. **Audio transcription**: Video URL (mp4) → **qwen3-asr-flash-filetrans** (DashScope async API) → sentence-level subtitles with ms timestamps
+2. **Video analysis**: Video URL → **Qwen3.5-Omni-Flash** (DashScope OpenAI-compatible streaming API) → summary + chapters
+
+**Note**: The original plan was to use `fun-asr` for transcription. The implementation uses `qwen3-asr-flash-filetrans` instead, which has a slightly different API structure (single `file_url` instead of `file_urls` array, `result.transcription_url` instead of `results[]`, etc.).
 
 ## Architecture
 
@@ -39,13 +45,13 @@ Video on S3
 
 ```
 Video on S3 (public URL already available)
-  → PASS VIDEO URL directly to Fun-ASR (no ffmpeg, no download!)
-  → Fun-ASR submit task (async, returns task_id)
+  → PASS VIDEO URL directly to qwen3-asr-flash-filetrans (no ffmpeg, no download!)
+  → Submit task (async, returns task_id)
   → Poll task status until SUCCEEDED
   → Download transcription result JSON
-  → convert Fun-ASR sentences → subtitle entries (ms → seconds)
+  → convert sentences → subtitle entries (ms → seconds)
 
-  → PASS VIDEO URL to Qwen3.5-Omni-Plus (OpenAI-compatible, streaming)
+  → PASS VIDEO URL to Qwen3.5-Omni-Flash (OpenAI-compatible, streaming)
   → Collect SSE stream chunks → concatenate full text
   → parse JSON → summary + chapters
 
@@ -55,7 +61,7 @@ Video on S3 (public URL already available)
 
 ### Key Improvement: No More ffmpeg
 
-Fun-ASR supports mp4/mkv/mov/avi/flv/wav/mp3 and many other formats directly. Our video files are already on S3 as public URLs. We can pass the video URL directly to Fun-ASR, eliminating:
+qwen3-asr-flash-filetrans supports mp4/mkv/mov/avi/flv/wav/mp3 and many other formats directly. Our video files are already on S3 as public URLs. We can pass the video URL directly, eliminating:
 - Video download to temp dir
 - ffmpeg extraction
 - Gemini file upload (resumable upload + polling)
@@ -66,16 +72,16 @@ This removes ~80% of the pipeline latency and the ffmpeg binary dependency.
 
 | Step | Current (Gemini) | New (DashScope) |
 |------|-----------------|-----------------|
-| **Audio input** | ffmpeg extract WAV → upload to Gemini File API | Pass video URL directly (Fun-ASR accepts mp4) |
-| **Transcription API** | `POST generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `POST dashscope-intl.aliyuncs.com/api/v1/services/audio/asr/transcription` |
+| **Audio input** | ffmpeg extract WAV → upload to Gemini File API | Pass video URL directly (qwen3-asr-flash-filetrans accepts mp4) |
+| **Transcription API** | `POST generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `POST {BaseURL}/api/v1/services/audio/asr/transcription` |
 | **Transcription mode** | Synchronous | Async (submit → poll → download) |
-| **Transcription model** | gemini-2.5-flash-lite | fun-asr |
-| **Video analysis API** | Same Gemini endpoint | `POST dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions` |
+| **Transcription model** | gemini-2.5-flash-lite | qwen3-asr-flash-filetrans |
+| **Video analysis API** | Same Gemini endpoint | `POST {BaseURL}/compatible-mode/v1/chat/completions` |
 | **Video analysis mode** | Synchronous | SSE streaming (mandatory) |
-| **Video model** | gemini-2.5-flash-lite | qwen3.5-omni-plus |
+| **Video model** | gemini-2.5-flash-lite | qwen3.5-omni-flash |
 | **Auth** | `?key=` query param | `Authorization: Bearer` header |
-| **Timestamps** | Seconds (float), Gemini generates | Milliseconds (integer), Fun-ASR generates |
-| **Language detection** | Gemini auto-detects | Explicit `language_hints: ["zh", "yue", "en"]` |
+| **Timestamps** | Seconds (float), Gemini generates | Milliseconds (integer), qwen3-asr-flash-filetrans generates |
+| **Language detection** | Gemini auto-detects | Auto-detect or explicit `language` param |
 | **Response format** | Gemini JSON → parse text field for JSON | ASR: result JSON download; Video: SSE → concatenate → parse JSON |
 
 ## Config Changes
@@ -86,13 +92,12 @@ This removes ~80% of the pipeline latency and the ffmpeg binary dependency.
 |--------|-----|
 | `GEMINI_API_KEY` | `DASHSCOPE_API_KEY` |
 | `GEMINI_MODEL` | `DASHSCOPE_BASE_URL` (default: `https://dashscope-intl.aliyuncs.com`) |
-| | `DASHSCOPE_ASR_MODEL` (default: `fun-asr`) |
+| | `DASHSCOPE_ASR_MODEL` (default: `qwen3-asr-flash-filetrans`) |
 | | `DASHSCOPE_VIDEO_MODEL` (default: `qwen3.5-omni-plus`) |
 
 ### Config Struct
 
 ```go
-// Replace GeminiConf with:
 type DashScopeConf struct {
     ApiKey     string `json:"api_key"`
     BaseURL    string `json:"base_url"`
@@ -109,8 +114,8 @@ type DashScopeConf struct {
   "dashscope": {
     "api_key": "sk-xxx",
     "base_url": "https://dashscope-intl.aliyuncs.com",
-    "asr_model": "fun-asr",
-    "video_model": "qwen3.5-omni-plus"
+    "asr_model": "qwen3-asr-flash-filetrans",
+    "video_model": "qwen3.5-omni-flash"
   }
 }
 ```
@@ -132,7 +137,7 @@ func (this *DashScopeConf) MarginWithENV() {
         this.ASRModel = os.Getenv("DASHSCOPE_ASR_MODEL")
     }
     if this.ASRModel == "" {
-        this.ASRModel = "fun-asr"
+        this.ASRModel = "qwen3-asr-flash-filetrans"
     }
     if this.VideoModel == "" {
         this.VideoModel = os.Getenv("DASHSCOPE_VIDEO_MODEL")
@@ -145,123 +150,26 @@ func (this *DashScopeConf) MarginWithENV() {
 
 ## New Structs and Types
 
-### DashScope Request/Response Types (new file: `pkg/dashscope.go`)
+### DashScope Request/Response Types (in `pkg/dashscope.go`)
 
-```go
-// --- Fun-ASR (Transcription) ---
+The following are the actual types used in the implementation. See `pkg/dashscope.go` for the complete source.
 
-type dashscopeASRSubmitRequest struct {
-    Model      string                `json:"model"`
-    Input      dashscopeASRInput     `json:"input"`
-    Parameters dashscopeASRParams    `json:"parameters,omitempty"`
-}
+**qwen3-asr-flash-filetrans (Transcription)**:
+- `dashscopeFiletransRequest` — submit body (`model`, `input.file_url`, `parameters`)
+- `dashscopeFiletransParameters` — `ChannelId`, `EnableItn`, `Language`
+- `dashscopeFiletransInput` — `FileUrl`
+- `dashscopeFiletransSubmitResponse` — submit response (`request_id`, `output.task_id`)
+- `dashscopeFiletransTaskResponse` — poll response (`output.task_status`, `output.result.transcription_url`, `output.task_metrics`)
+- `dashscopeFiletransResult` — transcription result (`file_url`, `audio_info`, `transcripts[]`)
+- `dashscopeFiletransSentence` — sentence-level result (`begin_time`, `end_time`, `text`, `language`, `emotion`, `words[]`)
+- `dashscopeFiletransWord` — word-level result (`begin_time`, `end_time`, `text`, `punctuation`)
+- `dashscopeMaaSEnvelope` — MaaS response wrapper (`code`, `message`, `data`)
+- `unwrapMaaSResponse()` — transparent MaaS/standard response handling
 
-type dashscopeASRInput struct {
-    FileURLs []string `json:"file_urls"`
-}
-
-type dashscopeASRParams struct {
-    ChannelID     []int    `json:"channel_id,omitempty"`
-    LanguageHints []string `json:"language_hints,omitempty"`
-}
-
-type dashscopeASRSubmitResponse struct {
-    RequestID string `json:"request_id"`
-    Output    struct {
-        TaskID     string `json:"task_id"`
-        TaskStatus string `json:"task_status"`
-    } `json:"output"`
-}
-
-type dashscopeTaskResponse struct {
-    RequestID string `json:"request_id"`
-    Output    struct {
-        TaskID     string `json:"task_id"`
-        TaskStatus string `json:"task_status"`
-        Results    []struct {
-            FileURL          string `json:"file_url"`
-            TranscriptionURL string `json:"transcription_url"`
-            SubtaskStatus    string `json:"subtask_status"`
-        } `json:"results"`
-        TaskMetrics struct {
-            TOTAL     int `json:"TOTAL"`
-            SUCCEEDED int `json:"SUCCEEDED"`
-            FAILED    int `json:"FAILED"`
-        } `json:"task_metrics"`
-    } `json:"output"`
-}
-
-type dashscopeTranscriptionResult struct {
-    FileURL    string `json:"file_url"`
-    Properties struct {
-        AudioFormat                       string `json:"audio_format"`
-        Channels                          []int  `json:"channels"`
-        OriginalSamplingRate              int    `json:"original_sampling_rate"`
-        OriginalDurationInMilliseconds    int    `json:"original_duration_in_milliseconds"`
-    } `json:"properties"`
-    Transcripts []struct {
-        ChannelID                     int    `json:"channel_id"`
-        ContentDurationInMilliseconds int    `json:"content_duration_in_milliseconds"`
-        Text                          string `json:"text"`
-        Sentences                     []struct {
-            BeginTime  int    `json:"begin_time"`
-            EndTime    int    `json:"end_time"`
-            Text       string `json:"text"`
-            SentenceID int    `json:"sentence_id"`
-            SpeakerID  int    `json:"speaker_id,omitempty"`
-            Words      []struct {
-                BeginTime   int    `json:"begin_time"`
-                EndTime     int    `json:"end_time"`
-                Text        string `json:"text"`
-                Punctuation string `json:"punctuation"`
-            } `json:"words"`
-        } `json:"sentences"`
-    } `json:"transcripts"`
-}
-
-// --- Qwen3.5-Omni-Plus (Video Analysis) ---
-
-type dashscopeChatRequest struct {
-    Model         string              `json:"model"`
-    Messages      []dashscopeMessage  `json:"messages"`
-    Stream        bool                `json:"stream"`
-    StreamOptions struct {
-        IncludeUsage bool `json:"include_usage"`
-    } `json:"stream_options"`
-    Modalities []string `json:"modalities"`
-    MaxTokens  int      `json:"max_tokens,omitempty"`
-}
-
-type dashscopeMessage struct {
-    Role    string               `json:"role"`
-    Content []dashscopeContentPart `json:"content"`
-}
-
-type dashscopeContentPart struct {
-    Type     string                  `json:"type"`
-    Text     string                  `json:"text,omitempty"`
-    VideoURL *dashscopeVideoURLValue `json:"video_url,omitempty"`
-}
-
-type dashscopeVideoURLValue struct {
-    URL string `json:"url"`
-}
-
-type dashscopeStreamChunk struct {
-    ID      string `json:"id"`
-    Choices []struct {
-        Delta struct {
-            Content string `json:"content"`
-        } `json:"delta"`
-        FinishReason *string `json:"finish_reason"`
-    } `json:"choices"`
-    Usage *struct {
-        PromptTokens     int `json:"prompt_tokens"`
-        CompletionTokens int `json:"completion_tokens"`
-        TotalTokens      int `json:"total_tokens"`
-    } `json:"usage,omitempty"`
-}
-```
+**Qwen3.5-Omni-Plus (Video Analysis)**:
+- `dashscopeChatRequest` — video analysis request
+- `dashscopeMessage`, `dashscopeContentPart`, `dashscopeVideoURLValue` — message types
+- `dashscopeStreamChunk` — SSE streaming chunk
 
 ### Result Types (replaces `GeminiIndexResult`)
 
@@ -321,7 +229,7 @@ However, `db.go` references `GeminiIndexResult` directly in `SaveVideoIndex` and
 
 ## SSE Streaming Handling
 
-Qwen3.5-Omni-Plus **requires** `stream: true`. The response is Server-Sent Events (SSE):
+Qwen3.5-Omni series **requires** `stream: true`. The response is Server-Sent Events (SSE):
 
 ```
 data: {"id":"...","choices":[{"delta":{"content":"The video..."},"finish_reason":null}]}
@@ -380,9 +288,9 @@ Key points:
 - Accumulate `delta.content` from each chunk
 - The last chunk with `usage` field contains token counts
 
-## Async Transcription Flow (Fun-ASR)
+## Async Transcription Flow (qwen3-asr-flash-filetrans)
 
-Fun-ASR uses a 3-step async pattern that integrates well with our existing goroutine-based task model:
+qwen3-asr-flash-filetrans uses a 3-step async pattern that integrates well with our existing goroutine-based task model:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -390,17 +298,24 @@ Fun-ASR uses a 3-step async pattern that integrates well with our existing gorou
 │                                                         │
 │  1. Submit ASR task                                     │
 │     POST /api/v1/services/audio/asr/transcription       │
-│     Headers: X-DashScope-Async: enable                  │
+│     Headers: X-DashScope-Async: enable  (必須)          │
+│     Body: {"model": "qwen3-asr-flash-filetrans",        │
+│            "input": {"file_url": "..."},                │
+│            "parameters": {"channel_id": [0]}}           │
 │     → returns task_id                                   │
 │                                                         │
 │  2. Poll until done (in same goroutine)                 │
 │     GET /api/v1/tasks/{task_id}                         │
+│     Headers: Authorization: Bearer {key}  (不需要       │
+│              X-DashScope-Async)                          │
 │     Loop with 3s sleep between polls                    │
-│     → returns transcription_url when SUCCEEDED          │
+│     → returns output.result.transcription_url           │
+│       when SUCCEEDED                                     │
 │                                                         │
 │  3. Download result                                     │
-│     GET transcription_url                               │
+│     GET transcription_url  (valid 24h)                  │
 │     → returns TranscriptionResult JSON                  │
+│       with file_url, audio_info, transcripts[]          │
 │                                                         │
 │  4. Convert sentences → subtitle entries                │
 │     begin_time/end_time (ms) → start/end (seconds)     │
@@ -409,66 +324,103 @@ Fun-ASR uses a 3-step async pattern that integrates well with our existing gorou
 └─────────────────────────────────────────────────────────┘
 ```
 
+### MaaS Workspace Compatibility
+
+If `DASHSCOPE_BASE_URL` points to a MaaS workspace endpoint (e.g., `{workspaceId}.ap-southeast-1.maas.aliyuncs.com`), responses are wrapped in an envelope:
+```json
+{"code": "", "message": "", "data": {標準 DashScope 回應}}
+```
+The code uses `unwrapMaaSResponse()` to handle both formats transparently.
+
 ### Polling Strategy
 
-- Poll interval: 3 seconds (matches research doc example)
-- Max poll duration: 10 minutes (timeout, matches our Gemini HTTP client timeout)
+- Poll interval: 3 seconds
+- Max poll duration: 10 minutes (timeout from http.Client)
 - DashScope polling rate limit: 20 QPS default (we're well under this with our 3-worker semaphore)
 - Terminal states: `SUCCEEDED`, `FAILED`
 - Non-terminal states: `PENDING`, `RUNNING`
 
+### Transcription Result Structure (qwen3-asr-flash-filetrans)
+
+```json
+{
+  "file_url": "https://example.com/video.mp4",
+  "audio_info": {"format": "mp4", "sample_rate": 44100},
+  "transcripts": [
+    {
+      "channel_id": 0,
+      "text": "Full text...",
+      "sentences": [
+        {
+          "sentence_id": 0,
+          "begin_time": 0,
+          "end_time": 1440,
+          "language": "zh",
+          "emotion": "neutral",
+          "text": "Sentence text.",
+          "words": [
+            {"begin_time": 0, "end_time": 160, "text": "字", "punctuation": ""}
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
 ### Timestamp Conversion
 
-Fun-ASR returns timestamps in **milliseconds** (int). Our subtitle format uses **seconds** (float64):
+Timestamps are in **milliseconds** (int). Our subtitle format uses **seconds** (float64):
 
 ```go
-func msToSeconds(ms int) float64 {
-    return float64(ms) / 1000.0
-}
+Start: float64(sentence.BeginTime) / 1000.0
+End:   float64(sentence.EndTime) / 1000.0
 ```
 
 ### Concurrency Opportunity
 
 Since transcription no longer requires download+ffmpeg+upload, the two pipeline steps can potentially run concurrently:
-- Step A: Fun-ASR transcription (async, takes ~10-30s)
+- Step A: qwen3-asr-flash-filetrans transcription (async, takes ~10-30s)
 - Step B: Qwen3.5-Omni-Plus video analysis (streaming, takes ~30-60s)
 
 Both accept the same video URL as input. Running them in parallel with `sync.WaitGroup` could cut total indexing time roughly in half.
 
 ## Prompts
 
-### Video Analysis Prompt (for Qwen3.5-Omni-Plus)
+### Video Analysis Prompt (for Qwen3.5-Omni series)
 
-Reuse the same prompt as Gemini (`geminiVideoPrompt`), adapted for the new API:
+The actual prompt used in `buildVideoPrompt()` (see `pkg/dashscope.go`):
 
 ```
 Analyze this video and return ONLY a valid JSON object (no markdown, no explanation).
 
-CRITICAL LANGUAGE RULE: Detect the primary spoken language in the video. You MUST write "summary" and all chapter "title" values in that SAME language. Do NOT use English if the video is spoken in another language.
+CRITICAL LANGUAGE RULE: You MUST write ALL text output in 繁體中文 (Traditional Chinese).
+
+Use BOTH the video visual content AND the provided subtitle transcript to produce accurate results.
 
 The JSON must have:
-1. "summary": A concise summary (2-4 sentences) based on BOTH audio and visual content, in the video's spoken language.
-2. "chapters": Array of entries with "start" (float, seconds), "end" (float, seconds), "title" (descriptive title in the video's spoken language).
+1. "summary": A concise summary (2-4 sentences) in 繁體中文.
+2. "chapters": Array of entries with "start" (float, seconds), "end" (float, seconds), "title" (descriptive title in 繁體中文).
 ```
 
-Note: Qwen3.5-Omni-Plus does not support `response_mime_type: "application/json"` like Gemini. We rely on the prompt to request JSON output and parse it. If the model occasionally returns non-JSON (markdown code blocks), we should strip ```json fences before parsing.
+Note: The Qwen model does not support `response_mime_type: "application/json"`. We rely on the prompt to request JSON output and parse it. The `extractJSON()` helper strips markdown fences before parsing.
 
 ### Transcription
 
-No prompt needed for Fun-ASR — it's a pure ASR model, not an LLM. Language is controlled via `language_hints` parameter.
+No prompt needed for qwen3-asr-flash-filetrans — it's a pure ASR model, not an LLM. Language is auto-detected or can be controlled via `language` parameter.
 
 ## Error Handling
 
-### Fun-ASR Errors
+### Transcription Errors (qwen3-asr-flash-filetrans)
 
 | Error | Cause | Handling |
 |-------|-------|----------|
 | HTTP 401 | Invalid API key | Fail task immediately, log error |
 | HTTP 429 | Rate limit (20 QPS polling) | Retry with backoff |
-| `task_status: FAILED` | Transcription failed | Check error details in task response, fail task |
+| `task_status: FAILED` | Transcription failed | Check `output.code` and `output.message` for details, fail task |
 | `transcription_url` download fails | URL expired (24h) or network error | Should not happen if we download immediately after SUCCEEDED |
 | Empty `transcripts` | No speech detected | Return empty subtitles, continue pipeline |
-| Unsupported format | File not in supported list | Should not happen (we pass mp4 URLs) |
+| MaaS error response | `{code: "xxx", message: "xxx"}` | `unwrapMaaSResponse()` returns error, task fails |
 
 ### Qwen3.5-Omni-Plus Errors
 
@@ -514,110 +466,94 @@ func extractJSON(raw string) string {
 | File | Changes |
 |------|---------|
 | `pkg/conf.go` | Add `DashScopeConf` field to `Config`, update `MarginWithENV` |
-| `pkg/http.go` | Replace `geminiHelper` usage in `indexVideoToS3` with `dashscopeHelper`. Remove ffmpeg/download/upload steps. Remove `os/exec` import if no longer needed. |
-| `pkg/db.go` | Update `SaveVideoIndex` and `FindVideoIndex` to use `DashScopeIndexResult` instead of `GeminiIndexResult` |
+| `pkg/http.go` | Replace Gemini helper with DashScope helper in `indexVideoToS3`. Remove ffmpeg/download/upload steps. |
+| `pkg/db.go` | Update `SaveVideoIndex` and `FindVideoIndex` to use `DashScopeIndexResult` |
 | `.env.example` | Replace `GEMINI_API_KEY`/`GEMINI_MODEL` with `DASHSCOPE_API_KEY`/`DASHSCOPE_BASE_URL`/`DASHSCOPE_ASR_MODEL`/`DASHSCOPE_VIDEO_MODEL` |
 | `docker-compose.yml` | Update env vars |
 | `docker-compose.e2e.yml` | Update env vars |
 
-### Files to Remove (after migration verified)
+### Files Removed
 
 | File | Notes |
 |------|-------|
-| `pkg/gemini.go` | Keep until migration is verified, then remove |
-| `pkg/gemini_test.go` | Keep until migration is verified, then remove |
-
-### Files NOT Affected
-
-| File | Why |
-|------|-----|
-| `pkg/wistia.go` | Wistia API integration unchanged |
-| `pkg/storage_s3.go` | S3 upload logic unchanged |
-| `pkg/log.go` | Logging unchanged |
-| `web/*` | Frontend unchanged (reads from same API endpoints) |
-| `webroot/*` | Static files unchanged |
+| `pkg/gemini.go` | ✅ Removed after migration verified |
+| `pkg/gemini_test.go` | ✅ Removed after migration verified |
 
 ## Task Breakdown
 
-### Phase 1: Create DashScope client (`pkg/dashscope.go`)
+### Phase 1: Create DashScope client (`pkg/dashscope.go`) — ✅ DONE
 
-- [ ] 1.1 Define `DashScopeConf` struct with `MarginWithENV()` method
-- [ ] 1.2 Define `DashScopeHelper` struct and constructor
-- [ ] 1.3 Implement Fun-ASR submit: `submitTranscription(fileURLs []string) (string, error)`
-- [ ] 1.4 Implement Fun-ASR poll: `pollTask(taskID string) (*dashscopeTaskResponse, error)`
-- [ ] 1.5 Implement Fun-ASR download: `downloadResult(url string) (*dashscopeTranscriptionResult, error)`
-- [ ] 1.6 Implement Fun-ASR combined: `Transcribe(videoUrl string) (*DashScopeAudioTranscription, error)` — submit + poll + download + convert to subtitle entries
-- [ ] 1.7 Define Qwen3.5-Omni-Plus request/response types
-- [ ] 1.8 Implement SSE stream collector: `streamChat(req *dashscopeChatRequest) (string, *DashScopeTokenUsage, error)`
-- [ ] 1.9 Implement `IndexVideo(videoUrl string) (string, *DashScopeTokenUsage, error)` using stream collector
-- [ ] 1.10 Define `DashScopeIndexResult` and associated types (subtitle, chapter, token usage)
-- [ ] 1.11 Implement `ToVTT()` method on `DashScopeIndexResult`
-- [ ] 1.12 Implement `extractJSON()` helper for stripping markdown fences
+- [x] 1.1 Define `DashScopeConf` struct with `MarginWithENV()` method
+- [x] 1.2 Define `DashScopeHelper` struct and constructor
+- [x] 1.3 Implement qwen3-asr-flash-filetrans submit + poll + download
+- [x] 1.4 Implement `Transcribe(videoUrl string) (*DashScopeAudioTranscription, error)`
+- [x] 1.5 Define Qwen3.5-Omni request/response types
+- [x] 1.6 Implement SSE stream collector
+- [x] 1.7 Implement `IndexVideo(videoUrl, subtitles) (string, *DashScopeTokenUsage, error)`
+- [x] 1.8 Define `DashScopeIndexResult` and associated types
+- [x] 1.9 Implement `ToVTT()` method
+- [x] 1.10 Implement `extractJSON()` helper
+- [x] 1.11 Add MaaS envelope support (`unwrapMaaSResponse()`)
 
-### Phase 2: Wire into config and DB
+### Phase 2: Wire into config and DB — ✅ DONE
 
-- [ ] 2.1 Add `DashScopeConf *DashScopeConf` field to `Config` struct in `conf.go`
-- [ ] 2.2 Update `Config.MarginWithENV()` to initialize `DashScopeConf`
-- [ ] 2.3 Update `db.go` `SaveVideoIndex` parameter type from `*GeminiIndexResult` to `*DashScopeIndexResult`
-- [ ] 2.4 Update `db.go` `FindVideoIndex` return type from `*GeminiIndexResult` to `*DashScopeIndexResult`
+- [x] 2.1 Add `DashScopeConf *DashScopeConf` field to `Config` struct
+- [x] 2.2 Update `Config.MarginWithENV()` to initialize `DashScopeConf`
+- [x] 2.3 Update `db.go` `SaveVideoIndex` to use `DashScopeIndexResult`
+- [x] 2.4 Update `db.go` `FindVideoIndex` to use `DashScopeIndexResult`
 
-### Phase 3: Rewrite `indexVideoToS3` in `http.go`
+### Phase 3: Rewrite `indexVideoToS3` in `http.go` — ✅ DONE
 
-- [ ] 3.1 Replace `NewGeminiHelper(s.config.GeminiConf)` with `NewDashScopeHelper(s.config.DashScopeConf)`
-- [ ] 3.2 Remove video download to temp dir (lines 636-648)
-- [ ] 3.3 Remove ffmpeg audio extraction (lines 651-667)
-- [ ] 3.4 Remove Gemini file upload (lines 669-680)
-- [ ] 3.5 Replace `geminiHelper.IndexAudio()` with `dashscopeHelper.Transcribe(videoUrl)` (pass video URL directly)
-- [ ] 3.6 Replace `geminiHelper.IndexVideo()` with `dashscopeHelper.IndexVideo(videoUrl)`
-- [ ] 3.7 Update result assembly: `GeminiIndexResult` → `DashScopeIndexResult`
-- [ ] 3.8 Update token usage logging
-- [ ] 3.9 Remove unused imports: `os/exec`, `math` (if no longer needed), `os` (if temp dir no longer needed)
-- [ ] 3.10 (Optional) Run transcription and video analysis concurrently with `sync.WaitGroup`
+- [x] 3.1 Replace Gemini helper with DashScope helper
+- [x] 3.2 Remove video download, ffmpeg extraction, Gemini file upload
+- [x] 3.3 Replace transcription with `dashscopeHelper.Transcribe(videoUrl)`
+- [x] 3.4 Replace video analysis with `dashscopeHelper.IndexVideo(videoUrl, subtitles)`
+- [x] 3.5 Update result assembly to use `DashScopeIndexResult`
 
-### Phase 4: Update env and Docker config
+### Phase 4: Update env and Docker config — ✅ DONE
 
-- [ ] 4.1 Update `.env.example`: replace GEMINI vars with DASHSCOPE vars
-- [ ] 4.2 Update `docker-compose.yml` env section
-- [ ] 4.3 Update `docker-compose.e2e.yml` env section
-- [ ] 4.4 Update `Dockerfile` if ffmpeg was installed (remove if no longer needed)
+- [x] 4.1 Update `.env.example`
+- [x] 4.2 Update `docker-compose.yml`
+- [x] 4.3 Remove ffmpeg dependency from Dockerfile
 
-### Phase 5: Tests
+### Phase 5: Tests — ✅ DONE
 
-- [ ] 5.1 Write `TestDashScopeConf_MarginWithENV` in `dashscope_test.go`
-- [ ] 5.2 Write `TestDashScopeIndexResult_ToVTT` in `dashscope_test.go`
-- [ ] 5.3 Write `TestDashScopeHelper_Transcribe` (integration, needs real API key)
-- [ ] 5.4 Write `TestDashScopeHelper_IndexVideo` (integration, needs real API key)
-- [ ] 5.5 Write `TestE2E_IndexVideoToS3_DashScope` (full pipeline integration test)
-- [ ] 5.6 Verify existing `db_test.go` still passes with new type names
+- [x] 5.1 `TestDashScopeConf_MarginWithENV`
+- [x] 5.2 `TestDashScopeFormatVTTTime`
+- [x] 5.3 `TestDashScopeIndexResult_ToVTT`
+- [x] 5.4 `TestDashScopeIndexResult_JSON`
+- [x] 5.5 `TestE2E_IndexVideoToS3_DashScope`
+- [x] 5.6 `TestDBHelper_SaveDashScopeVideoIndex`
 
-### Phase 6: Cleanup
+### Phase 6: Cleanup — ✅ DONE
 
-- [ ] 6.1 Remove `pkg/gemini.go`
-- [ ] 6.2 Remove `pkg/gemini_test.go`
-- [ ] 6.3 Verify `docker build` succeeds
-- [ ] 6.4 Verify `go test ./pkg/...` passes (with valid `.env`)
-- [ ] 6.5 Verify `yarn build` in `web/` still works (should be unaffected)
+- [x] 6.1 Remove `pkg/gemini.go`
+- [x] 6.2 Remove `pkg/gemini_test.go`
+- [x] 6.3 `docker build` succeeds
+- [x] 6.4 `go test` passes
 
 ## Cost Comparison
 
-| Service | Gemini (current) | DashScope (new) |
+| Service | Gemini (old) | DashScope (current) |
 |---------|-----------------|-----------------|
-| **Transcription** | Included in Gemini API tokens | $0.000035/second of speech (~$0.126/hour) |
-| **Video analysis** | Included in Gemini API tokens | Currently FREE (preview) |
+| **Transcription** | Included in Gemini API tokens | qwen3-asr-flash-filetrans: ~$0.000035/s (~$0.126/h) |
+| **Video analysis** | Included in Gemini API tokens | qwen3.5-omni-flash: token-based |
 | **File upload** | Gemini File API (free) | N/A (pass URL directly) |
-| **Estimated per 10-min video** | ~$0.01-0.05 (Gemini tokens) | ~$0.021 (ASR only, video free) |
+| **Estimated per 10-min video** | ~$0.01-0.05 (Gemini tokens) | ~$0.021 (ASR + video tokens) |
 | **Free quota** | Gemini free tier | 36,000s ASR + 1M tokens video (90 days) |
 
-Note: Gemini pricing depends on token usage which varies by model. DashScope ASR charges only for speech duration (silence excluded), which is typically 60-70% of wall-clock duration.
+Note: DashScope ASR charges only for speech duration (silence excluded), which is typically 60-70% of wall-clock duration.
 
 ## Open Questions
 
-1. **Backward compatibility with existing BoltDB data**: Existing `index` bucket entries are stored as `GeminiIndexResult` JSON. Since the JSON field names are identical, `json.Unmarshal` into `DashScopeIndexResult` should work. Should we add a migration script, or rely on JSON compatibility?
+1. **Backward compatibility with existing BoltDB data**: ✅ Resolved — JSON field names are identical between `GeminiIndexResult` and `DashScopeIndexResult`, so existing data is compatible.
 
-2. **Concurrent transcription + analysis**: Should we run Fun-ASR and Qwen video analysis in parallel (both accept the same video URL)? This would halve indexing time but complicate error handling.
+2. **Concurrent transcription + analysis**: Not yet implemented. The two steps run sequentially. Running them in parallel could halve indexing time.
 
-3. **Video duration limit**: Qwen3.5-Omni-Plus has ~400s limit at 720p. Our videos may exceed this. Should we fall back to a lower resolution or skip video analysis for long videos?
+3. **Video duration limit**: Qwen3.5-Omni-Plus has ~400s limit at 720p. The code tries multiple resolutions from smallest to largest, so it can fall back to lower resolutions for longer videos.
 
-4. **Gemini code retention**: Should we keep `gemini.go` as a fallback/option, or fully remove it? If keeping, we could add a config flag to choose provider.
+4. **Gemini code retention**: ✅ Removed — `pkg/gemini.go` and `pkg/gemini_test.go` have been removed.
 
-5. **Region selection**: Singapore (`dashscope-intl`) is the default. Should we make this configurable for teams in other regions?
+5. **Region selection**: ✅ Configurable via `DASHSCOPE_BASE_URL` env var. Supports standard DashScope endpoints and MaaS workspace endpoints.
+
+6. **MaaS workspace support**: ✅ Implemented — `unwrapMaaSResponse()` transparently handles both standard and MaaS response formats.
