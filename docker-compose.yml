@@ -18,5 +18,9 @@ services:
       - LISTEN=0.0.0.0:3031
       - WEBROOT=/app/webroot
       - DB_FILE_PATH=/app/wista-s3.db
+      - DASHSCOPE_API_KEY=$DASHSCOPE_API_KEY
+      - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope-intl.aliyuncs.com}
+      - DASHSCOPE_ASR_MODEL=${DASHSCOPE_ASR_MODEL:-fun-asr}
+      - DASHSCOPE_VIDEO_MODEL=${DASHSCOPE_VIDEO_MODEL:-qwen3.5-omni-plus}
     ports:
       - "3031:3031"

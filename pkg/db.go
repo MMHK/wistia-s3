@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"io"
 )
@@ -112,6 +113,71 @@ func (this *DBHelper) FindVideoInfo(hashId string) (*WistiaRespVideo, error) {
 		}
 
 		bin := bucket.Get([]byte(hashId))
+		return json.Unmarshal(bin, &info)
+	})
+	if err != nil {
+		Log.Error(err)
+		return nil, err
+	}
+
+	return &info, nil
+}
+
+func (this *DBHelper) SaveVideoIndex(hashId string, data *DashScopeIndexResult) error {
+	db, err := bolt.Open(this.Conf.FilePath, 0600, nil)
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+	defer db.Close()
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("index"))
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		bin, err := json.Marshal(data)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		err = bucket.Put([]byte(hashId), bin)
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		Log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (this *DBHelper) FindVideoIndex(hashId string) (*DashScopeIndexResult, error) {
+	db, err := bolt.Open(this.Conf.FilePath, 0600, nil)
+	if err != nil {
+		Log.Error(err)
+		return nil, err
+	}
+	defer db.Close()
+
+	var info DashScopeIndexResult
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("index"))
+		if err != nil {
+			Log.Error(err)
+			return err
+		}
+
+		bin := bucket.Get([]byte(hashId))
+		if bin == nil {
+			return fmt.Errorf("index not found for %s", hashId)
+		}
 		return json.Unmarshal(bin, &info)
 	})
 	if err != nil {

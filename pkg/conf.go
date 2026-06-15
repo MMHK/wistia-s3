@@ -7,12 +7,13 @@ import (
 )
 
 type Config struct {
-	Listen     string         `json:"listen"`
-	Webroot    string         `json:"webroot"`
-	Storage    *StorageConfig `json:"storages"`
-	WistiaConf *WistiaConf    `json:"wistia"`
-	DBConf     *DBConfig      `json:"db"`
-	TempDir    string
+	Listen      string         `json:"listen"`
+	Webroot     string         `json:"webroot"`
+	Storage     *StorageConfig `json:"storages"`
+	WistiaConf    *WistiaConf    `json:"wistia"`
+	DashScopeConf *DashScopeConf `json:"dashscope"`
+	DBConf        *DBConfig      `json:"db"`
+	TempDir     string
 }
 
 func NewConfigFromLocal(filename string) (*Config, error) {
@@ -45,6 +46,12 @@ func (this *Config) MarginWithENV() {
 		this.DBConf = &DBConfig{
 			FilePath: os.Getenv("DB_FILE_PATH"),
 		}
+	}
+
+	if this.DashScopeConf == nil || this.DashScopeConf.ApiKey == "" {
+		conf := new(DashScopeConf)
+		conf.MarginWithENV()
+		this.DashScopeConf = conf
 	}
 
 	if len(this.Listen) <= 0 {

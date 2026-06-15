@@ -22,16 +22,22 @@ FROM alpine:latest
 
 RUN apk update \
  && apk add --update libintl \
- && apk add --no-cache tzdata dumb-init mailcap
+ && apk add --no-cache tzdata dumb-init mailcap \
+ && addgroup -S appgroup \
+ && adduser -S appuser -G appgroup -h /home/appuser -s /sbin/nologin
 
 WORKDIR /app
 
 # Copy the Pre-built binary file from the previous stage
-COPY --from=builder /app/wistia-s3 .
-COPY ./web /app/web
-COPY ./webroot /app/webroot
+COPY --from=builder --chown=appuser:appgroup /app/wistia-s3 .
+COPY --chown=appuser:appgroup ./web /app/web
+COPY --chown=appuser:appgroup ./webroot /app/webroot
 
-ENV LISTEN="0.0.0.0:8843" \
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+ ENV LISTEN="0.0.0.0:8843" \
  WISTIA_API_KEY="" \
  WISTIA_WORKER_LIMIT=3 \
  TEMPLATE_DIR_PATH=/app/web/dist \
@@ -42,6 +48,10 @@ ENV LISTEN="0.0.0.0:8843" \
  S3_PREFIX="wistia-backup" \
  S3_BUCKET="s3.test.mixmedia.com" \
  S3_CLOUDFRONT_DOMAIN="" \
+ DASHSCOPE_API_KEY="" \
+ DASHSCOPE_BASE_URL="https://dashscope-intl.aliyuncs.com" \
+ DASHSCOPE_ASR_MODEL="qwen3-asr-flash" \
+ DASHSCOPE_VIDEO_MODEL="qwen3.5-omni-plus" \
  TZ="Asia/Hong_Kong" \
  LOG_LEVEL=INFO \
  DB_FILE_PATH=/app/wista-s3.db \
