@@ -151,15 +151,16 @@ func simpToTrad(input string) string {
 }
 
 type dashscopeFiletransRequest struct {
-	Model      string                        `json:"model"`
-	Input      dashscopeFiletransInput       `json:"input"`
-	Parameters dashscopeFiletransParameters  `json:"parameters,omitempty"`
+	Model      string                       `json:"model"`
+	Input      dashscopeFiletransInput      `json:"input"`
+	Parameters dashscopeFiletransParameters `json:"parameters,omitempty"`
 }
 
 type dashscopeFiletransParameters struct {
-	ChannelId []int  `json:"channel_id,omitempty"`
-	EnableItn *bool  `json:"enable_itn,omitempty"`
-	Language  string `json:"language,omitempty"`
+	ChannelId   []int  `json:"channel_id,omitempty"`
+	EnableItn   bool   `json:"enable_itn,omitempty"`
+	EnableWords bool   `json:"enable_words,omitempty"`
+	Language    string `json:"language,omitempty"`
 }
 
 type dashscopeFiletransInput struct {
@@ -168,7 +169,7 @@ type dashscopeFiletransInput struct {
 
 type dashscopeFiletransSubmitResponse struct {
 	RequestId string `json:"request_id,omitempty"`
-	Output struct {
+	Output    struct {
 		TaskId     string `json:"task_id"`
 		TaskStatus string `json:"task_status"`
 	} `json:"output"`
@@ -196,7 +197,7 @@ func unwrapMaaSResponse(body []byte) ([]byte, error) {
 
 type dashscopeFiletransTaskResponse struct {
 	RequestId string `json:"request_id,omitempty"`
-	Output struct {
+	Output    struct {
 		TaskId        string `json:"task_id"`
 		TaskStatus    string `json:"task_status"`
 		SubmitTime    string `json:"submit_time,omitempty"`
@@ -239,12 +240,12 @@ type dashscopeFiletransWord struct {
 }
 
 type dashscopeFiletransSentence struct {
-	SentenceId int                     `json:"sentence_id"`
-	BeginTime  int64                   `json:"begin_time"`
-	EndTime    int64                   `json:"end_time"`
-	Language   string                  `json:"language,omitempty"`
-	Emotion    string                  `json:"emotion,omitempty"`
-	Text       string                  `json:"text"`
+	SentenceId int                      `json:"sentence_id"`
+	BeginTime  int64                    `json:"begin_time"`
+	EndTime    int64                    `json:"end_time"`
+	Language   string                   `json:"language,omitempty"`
+	Emotion    string                   `json:"emotion,omitempty"`
+	Text       string                   `json:"text"`
 	Words      []dashscopeFiletransWord `json:"words,omitempty"`
 }
 
@@ -255,7 +256,9 @@ func (this *DashScopeHelper) Transcribe(videoUrl string) (*DashScopeAudioTranscr
 			FileUrl: videoUrl,
 		},
 		Parameters: dashscopeFiletransParameters{
-			ChannelId: []int{0},
+			ChannelId:   []int{0},
+			EnableItn:   true,
+			EnableWords: true,
 		},
 	}
 	jsonBody, err := json.Marshal(submitBody)
