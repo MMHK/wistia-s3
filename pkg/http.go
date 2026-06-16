@@ -682,15 +682,36 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 		return err
 	}
 
+	finalSubtitles := make([]DashScopeSubtitleEntry, len(audioResult.Subtitles))
+	copy(finalSubtitles, audioResult.Subtitles)
+	if len(videoResult.Subtitles) == len(audioResult.Subtitles) && len(videoResult.Subtitles) > 0 {
+		for i := range finalSubtitles {
+			finalSubtitles[i].Text = videoResult.Subtitles[i].Text
+		}
+		Log.Infof("merge-by-index: using %d refined subtitles (ASR timestamps preserved) for %s",
+			len(finalSubtitles), hashId)
+	} else if len(videoResult.Subtitles) > 0 {
+		Log.Warningf("refined subtitle count (%d) != ASR count (%d), falling back to ASR subtitles for %s",
+			len(videoResult.Subtitles), len(audioResult.Subtitles), hashId)
+	}
+
 	result := &DashScopeIndexResult{
 		HashId:      hashId,
 		Model:       s.config.DashScopeConf.VideoModel,
 		Source:      chosenAsset,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Summary:     videoResult.Summary,
-		Subtitles:   audioResult.Subtitles,
+		Subtitles:   finalSubtitles,
 		Chapters:    videoResult.Chapters,
 		TokenUsage:  videoUsage,
+	}
+
+	result.Summary = simpToTrad(result.Summary)
+	for i := range result.Subtitles {
+		result.Subtitles[i].Text = simpToTrad(result.Subtitles[i].Text)
+	}
+	for i := range result.Chapters {
+		result.Chapters[i].Title = simpToTrad(result.Chapters[i].Title)
 	}
 
 	if videoUsage != nil {

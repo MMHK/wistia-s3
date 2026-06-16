@@ -70,8 +70,9 @@ type DashScopeAudioTranscription struct {
 }
 
 type DashScopeVideoAnalysis struct {
-	Summary  string                  `json:"summary"`
-	Chapters []DashScopeChapterEntry `json:"chapters"`
+	Summary   string                   `json:"summary"`
+	Chapters  []DashScopeChapterEntry  `json:"chapters"`
+	Subtitles []DashScopeSubtitleEntry `json:"subtitles,omitempty"`
 }
 
 type DashScopeIndexResult struct {
@@ -376,11 +377,10 @@ func (this *DashScopeHelper) Transcribe(videoUrl string) (*DashScopeAudioTranscr
 	var subtitles []DashScopeSubtitleEntry
 	for _, transcript := range transResult.Transcripts {
 		for _, sentence := range transcript.Sentences {
-			text := simpToTrad(sentence.Text)
 			subtitles = append(subtitles, DashScopeSubtitleEntry{
 				Start: float64(sentence.BeginTime) / 1000.0,
 				End:   float64(sentence.EndTime) / 1000.0,
-				Text:  text,
+				Text:  sentence.Text,
 			})
 		}
 	}
@@ -411,7 +411,12 @@ Use BOTH the video visual content AND the provided subtitle transcript to produc
 
 The JSON must have:
 1. "summary": A concise summary (2-4 sentences) in 繁體中文, based on BOTH audio (subtitles) and visual content.
-2. "chapters": Array of entries with "start" (float, seconds), "end" (float, seconds), "title" (descriptive title in 繁體中文). Use the subtitle timestamps as reference to produce chapter time ranges that align with actual content transitions in the video.%s`, subtitleContext.String())
+2. "chapters": Array of entries with "start" (float, seconds), "end" (float, seconds), "title" (descriptive title in 繁體中文). Use the subtitle timestamps as reference to produce chapter time ranges that align with actual content transitions in the video.
+3. "subtitles": Array of corrected subtitle entries. Each entry has "start" (float), "end" (float), "text" (string). You MUST preserve the original "start" and "end" timestamps from the input transcript EXACTLY — copy them verbatim. You MUST output the SAME NUMBER of entries in the SAME ORDER as the input transcript. Only fix the "text" field based on audio and visual context: correct homophones, wrong characters, and punctuation. If an entry is already correct, copy it verbatim. All text must be in 繁體中文.%s`, subtitleContext.String())
+}
+
+type dashscopeResponseFmt struct {
+	Type string `json:"type"`
 }
 
 type dashscopeChatRequest struct {
@@ -421,8 +426,11 @@ type dashscopeChatRequest struct {
 	StreamOptions struct {
 		IncludeUsage bool `json:"include_usage"`
 	} `json:"stream_options"`
-	Modalities []string `json:"modalities"`
-	MaxTokens  int      `json:"max_tokens,omitempty"`
+	Modalities     []string              `json:"modalities"`
+	MaxTokens      int                   `json:"max_tokens,omitempty"`
+	ResponseFormat *dashscopeResponseFmt `json:"response_format,omitempty"`
+	EnableThinking bool                  `json:"enable_thinking,omitempty"`
+	ThinkingBudget int                   `json:"thinking_budget,omitempty"`
 }
 
 type dashscopeMessage struct {
@@ -444,7 +452,8 @@ type dashscopeStreamChunk struct {
 	ID      string `json:"id"`
 	Choices []struct {
 		Delta struct {
-			Content string `json:"content"`
+			Content          string `json:"content"`
+			ReasoningContent string `json:"reasoning_content,omitempty"`
 		} `json:"delta"`
 		FinishReason *string `json:"finish_reason"`
 	} `json:"choices"`
@@ -475,7 +484,7 @@ func (this *DashScopeHelper) IndexVideo(videoUrl string, subtitles []DashScopeSu
 			},
 		},
 		Modalities: []string{"text"},
-		MaxTokens:  4096,
+		MaxTokens:  32768,
 	}
 	reqBody.Stream = true
 	reqBody.StreamOptions.IncludeUsage = true
