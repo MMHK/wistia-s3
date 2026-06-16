@@ -291,6 +291,14 @@ func (this *WistiaHelper) UploadWistiaS3JS(conf *S3Config) (string, string, erro
 
 		Log.Infof("Uploaded %s to %s\n", jsPath, cloudFrontUrl)
 
+		cfHelper := NewCloudFrontHelper(conf)
+		if cfHelper != nil {
+			flushPaths := []string{fmt.Sprintf("/%s/cloudfront/media/wistia-s3.min.js", conf.PrefixPath)}
+			if err := cfHelper.InvalidatePaths(flushPaths); err != nil {
+				Log.Warningf("CloudFront flush failed for wistia-s3.min.js: %v", err)
+			}
+		}
+
 		return cloudFrontUrl, s3Url, nil
 	}
 
@@ -480,6 +488,14 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 		}
 		cloudFrontUrl = fmt.Sprintf("https://%s/%s", conf.CloudFrontDomain, strings.TrimLeft(path, "/"))
 		Log.Debugf("Uploaded %s to %s\n", remoteKey, cloudFrontUrl)
+
+		cfHelper := NewCloudFrontHelper(conf)
+		if cfHelper != nil {
+			flushPaths := []string{fmt.Sprintf("/%s/cloudfront/media/%s/*", conf.PrefixPath, hashId)}
+			if err := cfHelper.InvalidatePaths(flushPaths); err != nil {
+				Log.Warningf("CloudFront flush failed for %s: %v", hashId, err)
+			}
+		}
 	}
 
 	return cloudFrontUrl, s3Url, nil

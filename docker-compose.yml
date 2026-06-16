@@ -6,17 +6,19 @@ services:
       context: .
       dockerfile: Dockerfile
 
-  email2db:
+  wistia-s3:
     image: "mmhk/wistia-s3"
     restart: always
+    container_name: wistia-s3
     environment:
-      - S3_KEY=$S3_KEY
-      - S3_SECRET=$S3_SECRET
+      - S3_KEY=${S3_KEY}
+      - S3_SECRET=${S3_SECRET}
       - S3_REGION=ap-southeast-1
-      - S3_BUCKET=s3.test.mixmedia.com
-      - S3_PREFIX=wistia-backup
-      - S3_CLOUDFRONT_DOMAIN=$S3_CLOUDFRONT_DOMAIN
-      - WISTIA_API_KEY=$WISTIA_API_KEY
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_PREFIX=${S3_PREFIX}
+      - S3_CLOUDFRONT_DOMAIN=${S3_CLOUDFRONT_DOMAIN}
+      - S3_CLOUDFRONT_DIST_ID=${S3_CLOUDFRONT_DIST_ID}
+      - WISTIA_API_KEY=${WISTIA_API_KEY}
       - WISTIA_WORKER_LIMIT=3
       - TEMPLATE_DIR_PATH=/app/web/dist
       - LOG_LEVEL=INFO
@@ -24,9 +26,9 @@ services:
       - LISTEN=0.0.0.0:3031
       - WEBROOT=/app/webroot
       - DB_FILE_PATH=/app/wista-s3.db
-      - DASHSCOPE_API_KEY=$DASHSCOPE_API_KEY
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
       - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope-intl.aliyuncs.com}
-      - DASHSCOPE_ASR_MODEL=${DASHSCOPE_ASR_MODEL:-fun-asr}
-      - DASHSCOPE_VIDEO_MODEL=${DASHSCOPE_VIDEO_MODEL:-qwen3.5-omni-plus}
+      - DASHSCOPE_ASR_MODEL=${DASHSCOPE_ASR_MODEL:-qwen3-asr-flash-filetrans}
+      - DASHSCOPE_VIDEO_MODEL=${DASHSCOPE_VIDEO_MODEL:-qwen3.5-omni-flash}
     ports:
       - "3031:3031"

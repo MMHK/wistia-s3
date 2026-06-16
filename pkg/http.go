@@ -751,6 +751,17 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 		storage.PutContent(vttContent,
 			fmt.Sprintf("cloudfront/media/%s/subtitles.vtt", hashId),
 			&UploadOptions{ContentType: "text/vtt", PublicRead: true})
+
+		cfHelper := NewCloudFrontHelper(s3Conf)
+		if cfHelper != nil {
+			flushPaths := []string{
+				fmt.Sprintf("/%s/cloudfront/media/%s/index-ai.json", s3Conf.PrefixPath, hashId),
+				fmt.Sprintf("/%s/cloudfront/media/%s/subtitles.vtt", s3Conf.PrefixPath, hashId),
+			}
+			if err := cfHelper.InvalidatePaths(flushPaths); err != nil {
+				Log.Warningf("CloudFront flush failed for %s index: %v", hashId, err)
+			}
+		}
 	}
 
 	err = dbHelper.SaveVideoIndex(hashId, result)

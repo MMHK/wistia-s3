@@ -19,12 +19,32 @@
         "description": "<p>从S3刷新所有 uploaded video 到 local DB</p>",
         "responses": {
           "200": {
-            "description": "PDF文件内容",
-            "content": {}
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "API报错",
-            "content": {}
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
           }
         }
       }
@@ -46,12 +66,35 @@
         ],
         "responses": {
           "200": {
-            "description": "PDF文件内容",
-            "content": {}
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WistiaRespVideo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "API报错",
-            "content": {}
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
           }
         }
       }
@@ -74,12 +117,42 @@
         ],
         "responses": {
           "200": {
-            "description": "PDF文件内容",
-            "content": {}
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "API报错",
-            "content": {}
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
           }
         }
       }
@@ -115,12 +188,32 @@
         ],
         "responses": {
           "200": {
-            "description": "PDF文件内容",
-            "content": {}
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "API报错",
-            "content": {}
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
           }
         }
       }
@@ -150,32 +243,491 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "media": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "description": "视频HashId"
-                    }
-                  }
-                }
+                "$ref": "#/components/schemas/MultipleMediaBody"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "PDF文件内容",
-            "content": {}
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求格式錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
           },
           "500": {
-            "description": "API报错",
-            "content": {}
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/index/{hash}": {
+      "post": {
+        "tags": [],
+        "summary": "對單一視頻進行 AI 索引（字幕轉錄 + 摘要 + 章節）",
+        "description": "對單一視頻進行 AI 索引。若本地資料庫已有索引結果且 force 不為 true，直接同步回傳 DashScopeIndexResult；否則建立非同步任務回傳 Task，需輪詢 GET /tasks/{id} 取得結果。",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "description": "視頻 HashId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "description": "強制重新索引，忽略快取",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Task"
+                        },
+                        {
+                          "$ref": "#/components/schemas/DashScopeIndexResult"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求格式錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [],
+        "summary": "獲取視頻 AI 索引結果",
+        "description": "從本地資料庫獲取視頻的 AI 索引結果",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "description": "視頻 HashId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DashScopeIndexResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未找到",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/index": {
+      "post": {
+        "tags": [],
+        "summary": "批量對視頻進行 AI 索引",
+        "description": "批量提交視頻 AI 索引任務",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MultipleMediaBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "請求格式錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
           }
         }
       }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "APIResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean"
+          },
+          "data": {}
+        }
+      },
+      "APIStandardError": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "init",
+              "running",
+              "finished",
+              "error"
+            ]
+          },
+          "result": {}
+        }
+      },
+      "MoveToS3Result": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string"
+          },
+          "cloudfront": {
+            "type": "string"
+          },
+          "s3": {
+            "type": "string"
+          },
+          "status": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "MultipleMediaBody": {
+        "type": "object",
+        "properties": {
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "視頻HashId"
+            }
+          }
+        }
+      },
+      "WistiaRespVideo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "hashed_id": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number",
+            "format": "float"
+          },
+          "status": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "number",
+            "format": "float"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "section": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "$ref": "#/components/schemas/WistiaRespVideoThumbnail"
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WistiaRespVideoAsset"
+            }
+          },
+          "project": {
+            "$ref": "#/components/schemas/WistiaRespVideoProject"
+          }
+        }
+      },
+      "WistiaRespVideoAsset": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          }
+        }
+      },
+      "WistiaRespVideoThumbnail": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          }
+        }
+      },
+      "WistiaRespVideoProject": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "hashed_id": {
+            "type": "string"
+          }
+        }
+      },
+      "DashScopeIndexResult": {
+        "type": "object",
+        "properties": {
+          "hashId": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WistiaRespVideoAsset"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "subtitles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashScopeSubtitleEntry"
+            }
+          },
+          "chapters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashScopeChapterEntry"
+            }
+          },
+          "tokenUsage": {
+            "$ref": "#/components/schemas/DashScopeTokenUsage"
+          }
+        }
+      },
+      "DashScopeSubtitleEntry": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number",
+            "format": "double"
+          },
+          "end": {
+            "type": "number",
+            "format": "double"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "DashScopeChapterEntry": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number",
+            "format": "double"
+          },
+          "end": {
+            "type": "number",
+            "format": "double"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "DashScopeTokenUsage": {
+        "type": "object",
+        "properties": {
+          "inputK": {
+            "type": "number"
+          },
+          "outputK": {
+            "type": "number"
+          },
+          "totalK": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
 }

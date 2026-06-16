@@ -12,6 +12,7 @@ type S3Config struct {
 	Region           string `json:"region"`
 	PrefixPath       string `json:"prefix"`
 	CloudFrontDomain string `json:"cloudfront_domain"`
+	CloudFrontDistID string `json:"cloudfront_dist_id"`
 }
 
 func (c *S3Config) UseCloudFront() bool {

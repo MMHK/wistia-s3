@@ -34,6 +34,7 @@ func LoadS3ConfigWithEnv() *S3Config {
 		Bucket:           os.Getenv("S3_BUCKET"),
 		Region:           os.Getenv("S3_REGION"),
 		CloudFrontDomain: os.Getenv("S3_CLOUDFRONT_DOMAIN"),
+		CloudFrontDistID: os.Getenv("S3_CLOUDFRONT_DIST_ID"),
 		PrefixPath:       remotePathPrefix,
 	}
 }

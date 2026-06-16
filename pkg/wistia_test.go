@@ -70,7 +70,7 @@ func TestWistiaHelper_BuildTemplate(t *testing.T) {
 
 	data := &TemplateData{
 		MediaEndPoint: "https://media.wistia.com/medias/",
-		VideoName: "Video Demo Name",
+		VideoName:     "Video Demo Name",
 	}
 
 	reader, err := helper.BuildTemplate("index.html", data)
@@ -158,7 +158,92 @@ func TestWistiaHelper_UploadDemoPage(t *testing.T) {
 
 	videoData := new(WistiaRespVideo)
 
-	raw := `{"name":"TrainingVideo_ZDH02_04072024","id":121310790,"hashed_id":"7bg0z4stnx","duration":161.16,"status":"ready","progress":1,"archived":false,"section":"Zurich Training Video (For Training Site)","thumbnail":{"url":"https://embed-ssl.wistia.com/deliveries/0fe9093d49c2f11336c99ccedd1b34a4c98acfc2.jpg?image_crop_resized=200x120","width":200,"height":120},"assets":[{"type":"OriginalFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/original.mp4","fileSize":101105785,"contentType":"video/mp4","width":1920,"height":1080},{"type":"IphoneVideoFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/360.mp4","fileSize":5330201,"contentType":"video/mp4","width":640,"height":360},{"type":"Mp4VideoFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/224.mp4","fileSize":4078427,"contentType":"video/mp4","width":400,"height":224},{"type":"MdMp4VideoFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/540.mp4","fileSize":7401440,"contentType":"video/mp4","width":960,"height":540},{"type":"HdMp4VideoFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/720.mp4","fileSize":9561403,"contentType":"video/mp4","width":1280,"height":720},{"type":"HdMp4VideoFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/1080.mp4","fileSize":14841661,"contentType":"video/mp4","width":1920,"height":1080},{"type":"StillImageFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/cover.jpg","fileSize":567309,"contentType":"image/jpg","width":1920,"height":1080},{"type":"StoryboardFile","url":"https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/7bg0z4stnx/2260.jpg","fileSize":816443,"contentType":"image/jpg","width":2000,"height":2260}],"project":{"name":"SpeedyAgency","id":2637588,"hashed_id":"wvgixiqhom"}}`
+	raw := `{
+    "name": "TrainingVideo_PGB01_14082023",
+    "id": 108341755,
+    "hashed_id": "u7k1cgyjy0",
+    "duration": 177.842,
+    "status": "ready",
+    "progress": 1,
+    "archived": false,
+    "section": "Zurich Training Video (For Training Site)",
+    "thumbnail": {
+        "url": "https://embed-ssl.wistia.com/deliveries/f61380909a61d92b56c60a7ebb95328feb4d91f0.jpg?image_crop_resized=200x120",
+        "width": 200,
+        "height": 120
+    },
+    "assets": [
+        {
+            "type": "OriginalFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/original.mp4",
+            "fileSize": 112194856,
+            "contentType": "video/mp4",
+            "width": 1920,
+            "height": 1080
+        },
+        {
+            "type": "IphoneVideoFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/360.mp4",
+            "fileSize": 6767304,
+            "contentType": "video/mp4",
+            "width": 640,
+            "height": 360
+        },
+        {
+            "type": "Mp4VideoFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/224.mp4",
+            "fileSize": 4861043,
+            "contentType": "video/mp4",
+            "width": 400,
+            "height": 224
+        },
+        {
+            "type": "MdMp4VideoFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/540.mp4",
+            "fileSize": 9299596,
+            "contentType": "video/mp4",
+            "width": 960,
+            "height": 540
+        },
+        {
+            "type": "HdMp4VideoFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/720.mp4",
+            "fileSize": 12515969,
+            "contentType": "video/mp4",
+            "width": 1280,
+            "height": 720
+        },
+        {
+            "type": "HdMp4VideoFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/1080.mp4",
+            "fileSize": 19703676,
+            "contentType": "video/mp4",
+            "width": 1920,
+            "height": 1080
+        },
+        {
+            "type": "StillImageFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/cover.jpg",
+            "fileSize": 381245,
+            "contentType": "image/jpg",
+            "width": 1920,
+            "height": 1080
+        },
+        {
+            "type": "StoryboardFile",
+            "url": "https://s3.ap-southeast-1.amazonaws.com/s3.test.mixmedia.com/wistia-backup/media/u7k1cgyjy0/2260.jpg",
+            "fileSize": 1080266,
+            "contentType": "image/jpg",
+            "width": 2000,
+            "height": 2260
+        }
+    ],
+    "project": {
+        "name": "SpeedyAgency",
+        "id": 2637588,
+        "hashed_id": "wvgixiqhom"
+    }
+}`
 	err := json.Unmarshal([]byte(raw), videoData)
 	if err != nil {
 		t.Error(err)
@@ -174,7 +259,6 @@ func TestWistiaHelper_UploadDemoPage(t *testing.T) {
 	}
 	t.Logf("cloudfront: %s\n", cfUrl)
 	t.Logf("s3: %s\n", s3Url)
-
 
 	cfUrl, s3Url, err = helper.UploadDemoPage("demo.html", videoData, s3Conf, nil)
 	if err != nil {
@@ -221,7 +305,6 @@ func TestWistiaHelper_reUploadAllDemoPage(t *testing.T) {
 		}
 		t.Logf("cloudfront: %s\n", cfUrl)
 		t.Logf("s3: %s\n", s3Url)
-
 
 		cfUrl, s3Url, err = helper.UploadDemoPage("demo.html", videoData, s3Conf, nil)
 		if err != nil {

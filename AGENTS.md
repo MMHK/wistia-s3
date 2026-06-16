@@ -89,7 +89,7 @@ POST `/move/{hash}` or `/move` → returns task ID immediately → goroutine doe
 
 `conf.json` (via `-c` flag) → env vars fill empty fields via `MarginWithENV()` methods. Docker uses env vars only (no config file).
 
-Env vars: `S3_KEY`, `S3_SECRET`, `S3_BUCKET`, `S3_REGION`, `S3_PREFIX`, `S3_CLOUDFRONT_DOMAIN`, `WISTIA_API_KEY`, `WISTIA_WORKER_LIMIT`, `TEMPLATE_DIR_PATH`, `LOG_LEVEL`, `LISTEN`, `DB_FILE_PATH`, `WEBROOT`, `GA_TRACKING_ID`
+Env vars: `S3_KEY`, `S3_SECRET`, `S3_BUCKET`, `S3_REGION`, `S3_PREFIX`, `S3_CLOUDFRONT_DOMAIN`, `S3_CLOUDFRONT_DIST_ID`, `WISTIA_API_KEY`, `WISTIA_WORKER_LIMIT`, `TEMPLATE_DIR_PATH`, `LOG_LEVEL`, `LISTEN`, `DB_FILE_PATH`, `WEBROOT`, `GA_TRACKING_ID`
 
 ## Gotchas
 
