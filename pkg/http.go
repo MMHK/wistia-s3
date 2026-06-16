@@ -455,7 +455,14 @@ func (s *HTTPService) IndexVideo(w http.ResponseWriter, r *http.Request) {
 	tasks[taskID] = task
 	tasksMu.Unlock()
 
-	go s.indexVideoToS3(hashId, taskID)
+	go func(hashId string, taskId string) {
+		defer func() {
+			<-s.uploadQueue
+		}()
+		s.uploadQueue <- true
+
+		s.indexVideoToS3(hashId, taskId)
+	}(hashId, taskID)
 
 	s.ResponseJSON(task, w)
 }
