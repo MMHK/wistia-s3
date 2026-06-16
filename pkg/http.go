@@ -619,14 +619,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 	dashscopeHelper := NewDashScopeHelper(s.config.DashScopeConf)
 
 	chosenAsset := sortedFiles[0]
-	var videoUrl string
-	if s3Conf.UseCloudFront() {
-		videoUrl = fmt.Sprintf("https://%s/%s/media/%s/%d.mp4",
-			s3Conf.CloudFrontDomain, s3Conf.PrefixPath, hashId, chosenAsset.Height)
-	} else {
-		videoUrl = fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media/%s/%d.mp4",
-			s3Conf.Region, s3Conf.Bucket, s3Conf.PrefixPath, hashId, chosenAsset.Height)
-	}
+	videoUrl := chosenAsset.Url
 
 	Log.Infof("indexing video %s: %s (%dx%d)", hashId, videoUrl, chosenAsset.Width, chosenAsset.Height)
 
@@ -646,14 +639,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 	var videoText string
 	var videoUsage *DashScopeTokenUsage
 	for _, asset := range sortedFiles {
-		var vUrl string
-		if s3Conf.UseCloudFront() {
-			vUrl = fmt.Sprintf("https://%s/%s/media/%s/%d.mp4",
-				s3Conf.CloudFrontDomain, s3Conf.PrefixPath, hashId, asset.Height)
-		} else {
-			vUrl = fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media/%s/%d.mp4",
-				s3Conf.Region, s3Conf.Bucket, s3Conf.PrefixPath, hashId, asset.Height)
-		}
+		vUrl := asset.Url
 
 		Log.Infof("analyzing video %s at %dp for summary+chapters", hashId, asset.Height)
 		text, usage, err := dashscopeHelper.IndexVideo(vUrl, audioResult.Subtitles)
