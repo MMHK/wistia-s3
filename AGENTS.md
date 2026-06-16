@@ -1,6 +1,6 @@
 # AGENTS.md — wistia-s3
 
-Go 1.19 CLI + HTTP service that migrates Wistia videos to S3 (with optional CloudFront). Uses `gorilla/mux`, BoltDB, `aws-sdk-go` v1, vendor mode. Frontend in `web/` is webpack 5 (use **yarn**, not npm).
+Go 1.19 CLI + HTTP service that migrates Wistia videos to S3 (with optional CloudFront). Uses `gorilla/mux`, BoltDB, `aws-sdk-go` v1, vendor mode. Frontend in `web/` is rspack (use **yarn**, not npm).
 
 ## Commands
 
@@ -80,10 +80,13 @@ POST `/move/{hash}` or `/move` → returns task ID immediately → goroutine doe
 
 ## Frontend specifics
 
-- Two webpack entry points: `src/main.js` → `wistia-s3.min.js`, `src/demo.js` → `demo.min.js`
-- Production build **inlines** all CSS and JS into HTML files (via `HtmlInlineScriptPlugin` / `HTMLInlineCSSWebpackPlugin`) — `demo.html` gets `demo.min.js` inlined, `index.html` is standalone
+- Two rspack entry points: `src/main.js` → `wistia-s3.min.js`, `src/demo.js` → `demo.min.js`
+- Production build **inlines** all CSS and JS into HTML files (via custom `InlineJSPlugin` in `rspack.config.js`) — `demo.html` gets `demo.min.js` inlined, `index.html` gets `wistia-s3.min.js` inlined
+- `experiments.css = true` bundles CSS into JS; CSS is also inlined into HTML as `<style>` tags
 - `web/dist/` files are used by Go as Go templates. `wistia-s3.min.js` has `{{.MediaEndPoint}}` and `{{.TrackingID}}` injected at runtime by `WistiaHelper.BuildTemplate()`
-- Webpack reads `web/.env` for dev variables: `VIDEO_NAME`, `HASH_ID`, `WISTIA_S3_JS_URL`
+- Rspack reads `web/.env` for dev variables: `VIDEO_NAME`, `HASH_ID`, `WISTIA_S3_JS_URL`
+- `yarn serve` prompts for FRP tunnel (public access via `mmhk-frp`). FRP env vars: `FRP_ENDPOINT`, `FRP_ENDPOINT_PORT`, `FRP_API_PORT`, `FRP_API_USER`, `FRP_API_PWD`, `FRP_PUBLIC_DOMAIN`
+- `webpack.config.js` is kept for reference but is no longer used
 
 ## Config
 

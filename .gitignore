@@ -8,3 +8,4 @@ node_modules
 /web/.env
 /config.json
 /wistia-s3
+/web/dist
