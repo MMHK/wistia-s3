@@ -110,6 +110,11 @@ func (s *HTTPService) Start() {
 	r.HandleFunc("/tasks/{id}", s.GetTask).Methods("GET")
 	r.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/",
 		http.FileServer(http.Dir(fmt.Sprintf("%s/swagger", s.config.Webroot)))))
+	r.HandleFunc("/ui", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/index.html", http.StatusFound)
+	})
+	r.PathPrefix("/ui/").Handler(http.StripPrefix("/ui/",
+		http.FileServer(http.Dir(fmt.Sprintf("%s/webui", s.config.Webroot)))))
 	r.NotFoundHandler = http.HandlerFunc(s.NotFoundHandle)
 
 	Log.Info("http service starting")

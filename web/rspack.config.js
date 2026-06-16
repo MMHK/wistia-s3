@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const frp = require('mmhk-frp');
 const inquirer = require('inquirer');
 const http = require('http');
+const { VueLoaderPlugin } = require('rspack-vue-loader');
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
@@ -98,83 +99,164 @@ class InlineJSPlugin {
   }
 }
 
-const plugins = [
-  new rspack.ProgressPlugin(),
-  new rspack.HtmlRspackPlugin({
-    filename: 'demo.html',
-    template: path.resolve(__dirname, 'src/demo.html'),
-    inject: 'body',
-    excludeChunks: ['wistia-s3'],
-    minify: !IS_DEV,
-  }),
-  new rspack.HtmlRspackPlugin({
-    filename: 'index.html',
-    template: path.resolve(__dirname, 'src/index.html'),
-    inject: 'body',
-    excludeChunks: ['demo', 'wistia-s3'],
-    minify: !IS_DEV,
-  }),
-  new rspack.CopyRspackPlugin({
-    patterns: [{ from: 'src/favicon.ico', to: 'favicon.ico' }],
-  }),
-];
+function getPlayerConfig() {
+  const plugins = [
+    new rspack.ProgressPlugin(),
+    new rspack.HtmlRspackPlugin({
+      filename: 'demo.html',
+      template: path.resolve(__dirname, 'src/demo.html'),
+      inject: 'body',
+      excludeChunks: ['wistia-s3'],
+      minify: !IS_DEV,
+    }),
+    new rspack.HtmlRspackPlugin({
+      filename: 'index.html',
+      template: path.resolve(__dirname, 'src/index.html'),
+      inject: 'body',
+      excludeChunks: ['demo', 'wistia-s3'],
+      minify: !IS_DEV,
+    }),
+    new rspack.CopyRspackPlugin({
+      patterns: [{ from: 'src/favicon.ico', to: 'favicon.ico' }],
+    }),
+  ];
 
-if (IS_DEV) {
-  plugins.push(new DevTemplatePlugin());
-} else {
-  plugins.push(new InlineJSPlugin());
+  if (IS_DEV) {
+    plugins.push(new DevTemplatePlugin());
+  } else {
+    plugins.push(new InlineJSPlugin());
+  }
+
+  return {
+    mode: IS_DEV ? 'development' : 'production',
+    experiments: { css: true },
+    entry: {
+      'wistia-s3': ['./src/main.js'],
+      'demo': ['./src/demo.js'],
+    },
+    output: {
+      filename: IS_DEV ? '[name].js' : '[name].min.js',
+      path: path.resolve(__dirname, 'dist'),
+      publicPath: 'auto',
+      clean: true,
+    },
+    plugins,
+    module: {
+      rules: [
+        {
+          test: /\.css$/,
+          type: 'css',
+        },
+        {
+          test: /\.(png|jpe?g|gif|svg|webp|ico|eot|ttf|otf|woff2?)$/i,
+          type: 'asset',
+          generator: { filename: 'assets/[hash][ext][query]' },
+          parser: { dataUrlCondition: { maxSize: 200 * 1024 } },
+        },
+      ],
+    },
+    optimization: {
+      splitChunks: false,
+      runtimeChunk: false,
+      minimize: !IS_DEV,
+    },
+    performance: { hints: false },
+    devtool: 'source-map',
+    watchOptions: { ignored: /(node_modules)/ },
+    devServer: {
+      open: true,
+      compress: true,
+      hot: true,
+      static: { directory: path.join(__dirname, 'dist') },
+      allowedHosts: ['localhost', '.demo2.mixmedia.com'],
+    },
+  };
 }
 
-const baseConfig = {
-  mode: IS_DEV ? 'development' : 'production',
-  experiments: { css: true },
-  entry: {
-    'wistia-s3': ['./src/main.js'],
-    'demo': ['./src/demo.js'],
-  },
-  output: {
-    filename: IS_DEV ? '[name].js' : '[name].min.js',
-    path: path.resolve(__dirname, 'dist'),
-    publicPath: 'auto',
-    clean: true,
-  },
-  plugins,
-  module: {
-    rules: [
-      {
-        test: /\.css$/,
-        type: 'css',
-      },
-      {
-        test: /\.(png|jpe?g|gif|svg|webp|ico|eot|ttf|otf|woff2?)$/i,
-        type: 'asset',
-        generator: { filename: 'assets/[hash][ext][query]' },
-        parser: { dataUrlCondition: { maxSize: 200 * 1024 } },
-      },
+function getUiConfig() {
+  return {
+    mode: IS_DEV ? 'development' : 'production',
+    experiments: { css: true },
+    entry: {
+      ui: ['./src/ui/main.js'],
+    },
+    output: {
+      filename: IS_DEV ? '[name].js' : '[name].min.js',
+      path: path.resolve(__dirname, '../webroot/webui'),
+      publicPath: '/ui/',
+      clean: true,
+    },
+    plugins: [
+      new rspack.ProgressPlugin(),
+      new rspack.HtmlRspackPlugin({
+        filename: 'index.html',
+        template: path.resolve(__dirname, 'src/ui/index.html'),
+        inject: 'body',
+        minify: !IS_DEV,
+      }),
+      new VueLoaderPlugin(),
     ],
-  },
-  optimization: {
-    splitChunks: false,
-    runtimeChunk: false,
-    minimize: !IS_DEV,
-  },
-  performance: { hints: false },
-  devtool: 'source-map',
-  watchOptions: { ignored: /(node_modules)/ },
-  devServer: {
-    open: true,
-    compress: true,
-    hot: true,
-    static: { directory: path.join(__dirname, 'dist') },
-    allowedHosts: ['localhost', '.demo2.mixmedia.com'],
-  },
-};
+    module: {
+      rules: [
+        {
+          test: /\.vue$/,
+          loader: 'rspack-vue-loader',
+          options: { experimentalInlineMatchResource: true },
+        },
+        {
+          test: /\.css$/,
+          type: 'css',
+          use: ['postcss-loader'],
+        },
+        {
+          test: /\.(png|jpe?g|gif|svg|webp|ico|eot|ttf|otf|woff2?)$/i,
+          type: 'asset',
+          generator: { filename: 'assets/[hash][ext][query]' },
+          parser: { dataUrlCondition: { maxSize: 200 * 1024 } },
+        },
+      ],
+    },
+    optimization: {
+      splitChunks: false,
+      runtimeChunk: false,
+      minimize: !IS_DEV,
+    },
+    performance: { hints: false },
+    devtool: 'source-map',
+    watchOptions: { ignored: /(node_modules)/ },
+    devServer: {
+      open: true,
+      compress: true,
+      hot: true,
+      static: { directory: path.join(__dirname, '../webroot/webui') },
+      proxy: [
+        { context: ['/media', '/move', '/refresh', '/tasks', '/index'], target: 'http://localhost:3031' },
+      ],
+    },
+  };
+}
 
 if (!IS_DEV) {
-  module.exports = baseConfig;
+  const ns = process.env.NAMESPACE;
+  if (ns === 'webui') {
+    module.exports = getUiConfig();
+  } else if (ns === 'player') {
+    module.exports = getPlayerConfig();
+  } else {
+    module.exports = [getPlayerConfig(), getUiConfig()];
+  }
 } else {
   const prompt = inquirer.createPromptModule();
   module.exports = prompt([
+    {
+      type: 'list',
+      name: 'namespace',
+      message: '選擇開發項目',
+      choices: [
+        { name: 'Player (wistia-s3 / demo)', value: 'player' },
+        { name: 'WebUI (admin dashboard)', value: 'webui' },
+      ],
+    },
     {
       type: 'list',
       name: 'public',
@@ -183,18 +265,23 @@ if (!IS_DEV) {
         { name: '允許', value: true },
         { name: '不需要', value: false },
       ],
+      when: ({ namespace }) => namespace === 'player',
     },
     {
       type: 'input',
       name: 'subdomain',
       message: '請配一個域名',
       validate: (input) => /^([a-z0-9\-]{4,})$/i.test(input),
-      when: ({ public }) => public,
+      when: ({ namespace, public: p }) => namespace === 'player' && p,
     },
-  ]).then(({ public: usePublic, subdomain }) => {
+  ]).then(({ namespace, public: usePublic, subdomain }) => {
+    if (namespace === 'webui') {
+      return getUiConfig();
+    }
+    const config = getPlayerConfig();
     if (usePublic && subdomain) {
-      baseConfig.devServer = {
-        ...baseConfig.devServer,
+      config.devServer = {
+        ...config.devServer,
         client: {
           webSocketURL: `https://${subdomain}.${FRP_PUBLIC_DOMAIN}/ws`,
         },
@@ -233,6 +320,6 @@ if (!IS_DEV) {
         },
       };
     }
-    return baseConfig;
+    return config;
   });
 }

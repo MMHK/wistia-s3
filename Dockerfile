@@ -54,7 +54,7 @@ USER appuser
  TZ="Asia/Hong_Kong" \
  LOG_LEVEL=INFO \
  DB_FILE_PATH=/app/wista-s3.db \
- WEBROOT=/app/web
+ WEBROOT=/app/webroot
 
 EXPOSE 3031
 

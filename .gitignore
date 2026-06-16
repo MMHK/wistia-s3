@@ -9,3 +9,4 @@ node_modules
 /config.json
 /wistia-s3
 /web/dist
+/webroot/webui
