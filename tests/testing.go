@@ -3,24 +3,37 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/joho/godotenv"
-	"github.com/op/go-logging"
+	"log/slog"
+	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+
+	"github.com/joho/godotenv"
 )
+
+var log *slog.Logger
 
 //preload config in testing
 func init()  {
-	format := logging.MustStringFormatter(
-		`WISTIA-S3 %{color} %{shortfunc} %{level:.4s} %{shortfile}
-%{id:03x}%{color:reset} %{message}`,
-	)
-	logging.SetFormatter(format)
-	log := logging.MustGetLogger("wistia-s3")
+	lvl := slog.LevelInfo
+	if s := os.Getenv("LOG_LEVEL"); s != "" {
+		switch strings.ToUpper(s) {
+		case "DEBUG":
+			lvl = slog.LevelDebug
+		case "INFO":
+			lvl = slog.LevelInfo
+		case "WARN":
+			lvl = slog.LevelWarn
+		case "ERROR":
+			lvl = slog.LevelError
+		}
+	}
+	log = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
 
 	err := godotenv.Load(GetLocalPath("../.env"))
 	if err != nil {
-		log.Error("Error loading environment")
+		log.Error("Error loading environment", "error", err)
 	}
 }
 

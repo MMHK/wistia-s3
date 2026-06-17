@@ -138,17 +138,17 @@ func NewWistiaHelper(conf *WistiaConf) *WistiaHelper {
 func (this *WistiaHelper) GetVideoDetail(hashId string) (*WistiaRespVideo , error) {
 	req, err := http.NewRequest( "GET", fmt.Sprintf("%s/medias/%s.json", WISTIA_API_ENDPOINT, hashId), nil)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create Wistia API request", "error", err, "hash", hashId)
 		return nil, err
 	}
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", this.Conf.WistiaApiKey))
 
 	client := &http.Client{
-		Timeout:   60 * time.Second, // 总体请求超时
+		Timeout:   60 * time.Second,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to execute Wistia API request", "error", err, "hash", hashId)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -156,7 +156,7 @@ func (this *WistiaHelper) GetVideoDetail(hashId string) (*WistiaRespVideo , erro
 	decoder := json.NewDecoder(resp.Body)
 	videoResult := new(WistiaRespVideo)
 	if err := decoder.Decode(&videoResult); err != nil {
-		Log.Error(err)
+		Log.Error("failed to decode Wistia API response", "error", err, "hash", hashId)
 		return nil, err
 	}
 	return videoResult, nil
@@ -167,7 +167,7 @@ func (this *WistiaHelper) ArchiveVideos(videoHashList []string) error {
 	baseURL := fmt.Sprintf("%s/medias/archive.json", WISTIA_API_ENDPOINT)
 	u, err := url.Parse(baseURL)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to parse archive API URL", "error", err)
 		return err
 	}
 
@@ -178,33 +178,33 @@ func (this *WistiaHelper) ArchiveVideos(videoHashList []string) error {
 
 	u.RawQuery = query.Encode()
 
-	Log.Debugf("Upload URL: %s\n", u.String())
+	Log.Debug("archive API request URL", "url", u.String(), "count", len(videoHashList))
 
 	req, err := http.NewRequest( "PUT", u.String(), nil)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create archive API request", "error", err)
 		return err
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", this.Conf.WistiaApiKey))
 
 	client := &http.Client{
-		Timeout:   60 * time.Second, // 总体请求超时
+		Timeout:   60 * time.Second,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to execute archive API request", "error", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	bin, err := io.ReadAll(resp.Body)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to read archive API response", "error", err)
 		return err
 	}
 
-	Log.Debug(string(bin))
+	Log.Debug("archive API response", "body", string(bin), "status", resp.StatusCode)
 
 	if resp.StatusCode != 200 {
 		return errors.New(string((bin)))
@@ -222,11 +222,11 @@ type DelimsOptions struct {
 func (this *WistiaHelper) BuildTemplateWithDelims(filename string, data *TemplateData, delimiter *DelimsOptions) (io.Reader, error) {
 	fileFullpath := filepath.ToSlash(filepath.Join(this.Conf.TemplateDirPath, filename));
 
-	Log.Debugf("Template file: %s\n", fileFullpath)
+	Log.Debug("parsing template file", "path", fileFullpath)
 
 	parser, err := template.ParseFiles(fileFullpath)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to parse template file", "error", err, "path", fileFullpath)
 		return nil, err
 	}
 
@@ -237,7 +237,7 @@ func (this *WistiaHelper) BuildTemplateWithDelims(filename string, data *Templat
 	var buf bytes.Buffer
 	err = parser.Execute(&buf, &data)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to execute template", "error", err, "path", fileFullpath)
 		return nil, err
 	}
 
@@ -253,7 +253,7 @@ func (this *WistiaHelper) UploadWistiaS3JS(conf *S3Config) (string, string, erro
 
 	storage, err := NewS3Storage(conf)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create S3 storage for player JS upload", "error", err)
 		return "", "", err
 	}
 
@@ -264,38 +264,38 @@ func (this *WistiaHelper) UploadWistiaS3JS(conf *S3Config) (string, string, erro
 	remoteKey := fmt.Sprintf("media/%s", jsPath)
 	reader, err := this.BuildTemplate(jsPath, &data)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to build player JS template for S3", "error", err, "key", remoteKey)
 		return "", "", err
 	}
 	_, s3Url, err := storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/javascript", PublicRead: true})
 	if err != nil {
-		Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
+		Log.Error("failed to upload player JS to S3", "error", err, "key", remoteKey)
 		return "", "", err
 	}
-	Log.Infof("Uploaded %s to %s\n", jsPath, s3Url)
+	Log.Info("uploaded player JS to S3", "file", jsPath, "url", s3Url)
 
 	if conf.UseCloudFront() {
 		data.MediaEndPoint = fmt.Sprintf("https://%s/%s/cloudfront/media", conf.CloudFrontDomain, conf.PrefixPath)
 		remoteKey = fmt.Sprintf("cloudfront/media/%s", jsPath)
 		reader, err := this.BuildTemplate(jsPath, &data)
 		if err != nil {
-			Log.Error(err)
+			Log.Error("failed to build player JS template for CloudFront", "error", err, "key", remoteKey)
 			return "", s3Url, err
 		}
 		_, cloudFrontUrl, err := storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/javascript", PublicRead: true})
 		if err != nil {
-			Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
+			Log.Error("failed to upload player JS to CloudFront", "error", err, "key", remoteKey)
 			return "", "", err
 		}
 		cloudFrontUrl = fmt.Sprintf("https://%s/%s/cloudfront/media/%s", conf.CloudFrontDomain, conf.PrefixPath, jsPath)
 
-		Log.Infof("Uploaded %s to %s\n", jsPath, cloudFrontUrl)
+		Log.Info("uploaded player JS to CloudFront", "file", jsPath, "url", cloudFrontUrl)
 
 		cfHelper := NewCloudFrontHelper(conf)
 		if cfHelper != nil {
 			flushPaths := []string{fmt.Sprintf("/%s/cloudfront/media/wistia-s3.min.js", conf.PrefixPath)}
 			if err := cfHelper.InvalidatePaths(flushPaths); err != nil {
-				Log.Warningf("CloudFront flush failed for wistia-s3.min.js: %v", err)
+				Log.Warn("CloudFront invalidation failed for player JS", "error", err, "file", jsPath)
 			}
 		}
 
@@ -315,7 +315,7 @@ func (this *WistiaHelper) UploadDemoPage(tplName string, video *WistiaRespVideo,
 
 	storage, err := NewS3Storage(conf)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create S3 storage for demo page", "error", err, "hash", video.HashId, "template", tplName)
 		return "", "", err
 	}
 
@@ -328,18 +328,18 @@ func (this *WistiaHelper) UploadDemoPage(tplName string, video *WistiaRespVideo,
 	this.queue <- true
 
 	remoteKey := fmt.Sprintf("media/%s/%s", video.HashId, tplName)
-	Log.Infof("generate %s => %s\n", tplName, remoteKey)
+	Log.Info("generating page from template", "template", tplName, "key", remoteKey, "hash", video.HashId)
 	reader, err := this.BuildTemplate(tplName, &data)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to build page template for S3", "error", err, "template", tplName, "hash", video.HashId)
 		return "", "", err
 	}
 	_, s3Url, err := storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/html", PublicRead: true})
 	if err != nil {
-		Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
+		Log.Error("failed to upload page to S3", "error", err, "key", remoteKey, "template", tplName)
 		return "", "", err
 	}
-	Log.Infof("Uploaded %s to %s\n", tplName, s3Url)
+	Log.Info("uploaded page to S3", "template", tplName, "url", s3Url, "hash", video.HashId)
 
 	if conf.UseCloudFront() {
 		if wg != nil {
@@ -354,19 +354,19 @@ func (this *WistiaHelper) UploadDemoPage(tplName string, video *WistiaRespVideo,
 		data.MediaEndPoint = fmt.Sprintf("https://%s/%s/cloudfront/media", conf.CloudFrontDomain, conf.PrefixPath)
 		data.WistiaS3JSUrl = fmt.Sprintf("https://%s/%s/cloudfront/media/wistia-s3.min.js", conf.CloudFrontDomain, conf.PrefixPath)
 
-		Log.Infof("generate %s => %s\n", tplName, remoteKey)
+		Log.Info("generating CloudFront page from template", "template", tplName, "key", remoteKey, "hash", video.HashId)
 		reader, err := this.BuildTemplate(tplName, &data)
 		if err != nil {
-			Log.Error(err)
+			Log.Error("failed to build page template for CloudFront", "error", err, "template", tplName, "hash", video.HashId)
 			return "", s3Url, err
 		}
 		_, _, err = storage.PutStream(reader, remoteKey, &UploadOptions{ContentType: "text/html", PublicRead: true})
 		if err != nil {
-			Log.Errorf("upload [%s] Error: %s\n", remoteKey, err)
+			Log.Error("failed to upload page to CloudFront", "error", err, "key", remoteKey, "template", tplName)
 			return "", s3Url, err
 		}
 		cfUrl := fmt.Sprintf("https://%s/%s/cloudfront/media/%s/%s", conf.CloudFrontDomain, conf.PrefixPath, video.HashId, tplName)
-		Log.Infof("Uploaded %s to %s\n", tplName, cfUrl)
+		Log.Info("uploaded page to CloudFront", "template", tplName, "url", cfUrl, "hash", video.HashId)
 
 		return cfUrl, s3Url, nil
 	}
@@ -377,14 +377,14 @@ func (this *WistiaHelper) UploadDemoPage(tplName string, video *WistiaRespVideo,
 func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, string, error) {
 	video, err := this.GetVideoDetail(hashId)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to get video details for migration", "error", err, "hash", hashId)
 		return "", "", err
 	}
 	wg := sync.WaitGroup{}
 
 	storage, err := NewS3Storage(conf)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create S3 storage for migration", "error", err, "hash", hashId)
 		return "", "", err
 	}
 
@@ -398,21 +398,20 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 			}()
 			this.queue <- true
 
-			Log.Infof("Downloading [%s]\n", asset.Url)
+			Log.Info("downloading video asset", "url", asset.Url, "type", asset.Type, "height", asset.Height, "hash", video.HashId)
 
 			req, err := http.NewRequest( "GET", asset.Url, nil)
 			client := &http.Client{
-				Timeout:   60 * time.Second, // 总体请求超时
+				Timeout:   60 * time.Second,
 			}
 			resp, err := client.Do(req)
 			if err != nil {
-				Log.Errorf("download [%s] Error: %s\n", asset.Url, err)
+				Log.Error("failed to download video asset", "error", err, "url", asset.Url, "type", asset.Type, "hash", video.HashId)
 				return
 			}
 			defer resp.Body.Close()
 
 			extension := ".bin"
-			// get extension from asset.ContentType or mimeType
 			extList, err := mime.ExtensionsByType(asset.ContentType)
 			if err == nil && len(extList) > 0 {
 				extension = extList[0]
@@ -431,13 +430,13 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 
 			path, url, err := storage.PutStream(resp.Body, remoteKey, &UploadOptions{ContentType: asset.ContentType, PublicRead: true})
 			if err != nil {
-				Log.Errorf("upload [%s] Error: %s\n", asset.Url, err)
+				Log.Error("failed to upload video asset to S3", "error", err, "url", asset.Url, "key", remoteKey, "type", asset.Type, "hash", video.HashId)
 				return
 			}
 
 			asset.S3Key = path
 
-			Log.Infof("Uploaded %s to %s\n", asset.Url, url)
+			Log.Info("uploaded video asset to S3", "url", url, "key", remoteKey, "type", asset.Type, "hash", video.HashId)
 
 			asset.Url = url
 
@@ -455,45 +454,45 @@ func (this *WistiaHelper) MoveToS3(hashId string, conf *S3Config) (string, strin
 	wg.Wait()
 
 	// S3 endpoint
-	Log.Debug("upload s3 index file")
+	Log.Debug("uploading S3 index.json", "hash", video.HashId)
 	remoteKey := fmt.Sprintf("media/%s/index.json", video.HashId)
 	bin, err := json.Marshal(video)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to marshal video metadata for S3 index", "error", err, "hash", video.HashId)
 		return "", "", err
 	}
 	_, s3Url, err := storage.PutContent(string(bin), remoteKey, &UploadOptions{ContentType: "application/json", PublicRead: true})
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to upload S3 index.json", "error", err, "key", remoteKey, "hash", video.HashId)
 		return "", "", err
 	}
-	Log.Debugf("Uploaded %s to %s\n", remoteKey, s3Url)
+	Log.Debug("uploaded S3 index.json", "key", remoteKey, "url", s3Url, "hash", video.HashId)
 
 	cloudFrontUrl := ""
 	if conf.UseCloudFront() {
-		Log.Debug("upload cloudfront index file")
+		Log.Debug("uploading CloudFront index.json", "hash", video.HashId)
 		for _, asset := range *video.Assets {
 			asset.Url = fmt.Sprintf("https://%s/%s", conf.CloudFrontDomain, strings.TrimLeft(asset.S3Key, "/"))
 		}
 		bin, err := json.Marshal(video)
 		if err != nil {
-			Log.Error(err)
+			Log.Error("failed to marshal video metadata for CloudFront index", "error", err, "hash", video.HashId)
 			return "", s3Url, err
 		}
 		remoteKey = fmt.Sprintf("cloudfront/media/%s/index.json", video.HashId)
 		path, _, err := storage.PutContent(string(bin), remoteKey, &UploadOptions{ContentType: "application/json", PublicRead: true})
 		if err != nil {
-			Log.Error(err)
+			Log.Error("failed to upload CloudFront index.json", "error", err, "key", remoteKey, "hash", video.HashId)
 			return "", s3Url, err
 		}
 		cloudFrontUrl = fmt.Sprintf("https://%s/%s", conf.CloudFrontDomain, strings.TrimLeft(path, "/"))
-		Log.Debugf("Uploaded %s to %s\n", remoteKey, cloudFrontUrl)
+		Log.Debug("uploaded CloudFront index.json", "key", remoteKey, "url", cloudFrontUrl, "hash", video.HashId)
 
 		cfHelper := NewCloudFrontHelper(conf)
 		if cfHelper != nil {
 			flushPaths := []string{fmt.Sprintf("/%s/cloudfront/media/%s/*", conf.PrefixPath, hashId)}
 			if err := cfHelper.InvalidatePaths(flushPaths); err != nil {
-				Log.Warningf("CloudFront flush failed for %s: %v", hashId, err)
+				Log.Warn("CloudFront invalidation failed for video", "error", err, "hash", hashId)
 			}
 		}
 	}

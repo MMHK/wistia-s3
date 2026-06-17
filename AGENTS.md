@@ -1,21 +1,21 @@
 # AGENTS.md — wistia-s3
 
-Go 1.19 CLI + HTTP service that migrates Wistia videos to S3 (with optional CloudFront). Uses `gorilla/mux`, BoltDB, `aws-sdk-go` v1, vendor mode. Frontend in `web/` is rspack (use **yarn**, not npm).
+Go 1.21 CLI + HTTP service that migrates Wistia videos to S3 (with optional CloudFront). Uses `gorilla/mux`, BoltDB, `aws-sdk-go` v1, vendor mode. Frontend in `web/` is rspack (use **yarn**, not npm).
 
 ## Commands
 
-Local dev uses Docker with `golang:1.19` image (no local Go install needed). Frontend uses yarn directly.
+Local dev uses Docker with `golang:1.21` image (no local Go install needed). Frontend uses yarn directly.
 
 ```bash
 # Build (output binary to ./wistia-s3)
-docker run --rm -v "${PWD}:/app" -w /app golang:1.19 go build -o wistia-s3
+docker run --rm -v "${PWD}:/app" -w /app golang:1.21 go build -o wistia-s3
 
 # Test — ALL tests are integration tests (hit real Wistia API + S3)
-docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.19 go test ./pkg/...
-docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.19 go test ./pkg/ -v -run TestFuncName
+docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.21 go test ./pkg/...
+docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.21 go test ./pkg/ -v -run TestFuncName
 
 # After any dependency change, vendor/ MUST be regenerated
-docker run --rm -v "${PWD}:/app" -w /app golang:1.19 sh -c "go get github.com/pkg@version && go mod vendor"
+docker run --rm -v "${PWD}:/app" -w /app golang:1.21 sh -c "go get github.com/pkg@version && go mod vendor"
 
 # Frontend (run from web/ directory)
 yarn build                           # production → web/dist/
@@ -76,7 +76,7 @@ POST `/move/{hash}` or `/move` → returns task ID immediately → goroutine doe
 
 - `WISTIA_WORKER_LIMIT` env (default 3) → channel-based semaphore in both `HTTPService` and `WistiaHelper`
 - Parallel asset downloads per video via `sync.WaitGroup`
-- Package-level `Log` global (go-logging), level from `LOG_LEVEL` env
+- Package-level `Log` global (log/slog), level from `LOG_LEVEL` env
 
 ## Frontend specifics
 
@@ -102,7 +102,7 @@ Env vars: `S3_KEY`, `S3_SECRET`, `S3_BUCKET`, `S3_REGION`, `S3_PREFIX`, `S3_CLOU
 - Receiver name is `this` throughout the codebase, not `s` / `r` / etc.
 - JSON error format: `{"status": false, "error": "..."}` (`APIStandardError`). Success: `{"status": true, "data": ...}` (`APIResponse`)
 - All S3 uploads use `PublicRead: true`
-- Go 1.19 is pinned — do not upgrade without testing all vendored dependencies
+- Go 1.21 is pinned — do not upgrade without testing all vendored dependencies
 - Docker compose service is named `email2db` (legacy name, not renamed for backward compat)
 - `SaveVideoInfo` in `MoveVideoToS3` runs in a **detached goroutine** (`http.go:300`) — task status becomes `FINISHED` before BoltDB write completes. Polling `/tasks/{id}` immediately may find the video missing from BoltDB.
 - `MoveVideoToS3` **skips migration** for videos already in BoltDB (unless `?forceRefresh=true`) — it returns pre-computed S3/CloudFront URLs without verifying assets exist on S3
@@ -218,8 +218,8 @@ When spawning an implementation sub agent, include:
 - **What**: Concise description of the task
 - **Context**: Reference to `docs/plans/{feature}-plan.md` for full plan
 - **Files**: Specific paths to create/modify
-- **Constraints**: Follow existing conventions (see AGENTS.md), Go 1.19 compat, S3 key layout backward compat, receiver name is `this`
-- **Verification**: How to verify (e.g. `docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.19 go test ./pkg/ -run TestXxx`)
+- **Constraints**: Follow existing conventions (see AGENTS.md), Go 1.21 compat, S3 key layout backward compat, receiver name is `this`
+- **Verification**: How to verify (e.g. `docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.21 go test ./pkg/ -run TestXxx`)
 - **Return**: Summarize changes made and any issues encountered
 
 ### Review Sub Agent Prompt Template

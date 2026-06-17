@@ -23,7 +23,7 @@ func NewCloudFrontHelper(conf *S3Config) *CloudFrontHelper {
 		Credentials: credentials.NewStaticCredentials(conf.AccessKey, conf.SecretKey, ""),
 	})
 	if err != nil {
-		Log.Errorf("CloudFrontHelper session error: %v", err)
+		Log.Error("failed to create CloudFront session", "dist_id", conf.CloudFrontDistID, "error", err)
 		return nil
 	}
 	return &CloudFrontHelper{
@@ -54,6 +54,6 @@ func (this *CloudFrontHelper) InvalidatePaths(paths []string) error {
 	if err != nil {
 		return err
 	}
-	Log.Infof("CloudFront invalidation created: %s (ID: %s)", this.distID, *output.Invalidation.Id)
+	Log.Info("CloudFront invalidation created", "dist_id", this.distID, "invalidation_id", *output.Invalidation.Id)
 	return nil
 }

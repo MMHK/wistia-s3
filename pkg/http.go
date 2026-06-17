@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -115,11 +116,11 @@ func (s *HTTPService) Start() {
 		http.FileServer(http.Dir(fmt.Sprintf("%s/webui", s.config.Webroot)))))
 	r.NotFoundHandler = http.HandlerFunc(s.NotFoundHandle)
 
-	Log.Info("http service starting")
-	Log.Infof("Please open http://%s\n", s.config.Listen)
+	Log.Info("http service starting", "listen", s.config.Listen)
 	err := http.ListenAndServe(s.config.Listen, r)
 	if err != nil {
-		Log.Fatal(err)
+		Log.Error("server failed to start", "error", err)
+		os.Exit(1)
 	}
 }
 

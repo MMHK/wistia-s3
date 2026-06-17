@@ -136,7 +136,7 @@ func init() {
 	var err error
 	s2hk, err = opencc.New("s2hk")
 	if err != nil {
-		Log.Errorf("failed to init opencc s2hk: %v", err)
+		Log.Error("failed to init opencc s2hk converter", "error", err)
 	}
 }
 
@@ -268,7 +268,7 @@ func (this *DashScopeHelper) Transcribe(videoUrl string) (*DashScopeAudioTranscr
 	}
 
 	submitUrl := fmt.Sprintf("%s/api/v1/services/audio/asr/transcription", this.Conf.BaseURL)
-	Log.Infof("submitting ASR task: %s", submitUrl)
+	Log.Info("submitting ASR task", "url", submitUrl, "model", this.Conf.ASRModel)
 
 	req, err := http.NewRequest("POST", submitUrl, bytes.NewReader(jsonBody))
 	if err != nil {
@@ -302,7 +302,7 @@ func (this *DashScopeHelper) Transcribe(videoUrl string) (*DashScopeAudioTranscr
 	}
 
 	taskId := submitResp.Output.TaskId
-	Log.Infof("ASR task submitted: %s", taskId)
+	Log.Info("ASR task submitted", "task_id", taskId)
 
 	taskUrl := fmt.Sprintf("%s/api/v1/tasks/%s", this.Conf.BaseURL, taskId)
 	var taskResp dashscopeFiletransTaskResponse
@@ -338,7 +338,7 @@ func (this *DashScopeHelper) Transcribe(videoUrl string) (*DashScopeAudioTranscr
 			return nil, fmt.Errorf("parse task response failed: %w, body: %s", err, string(respBody))
 		}
 
-		Log.Infof("ASR task %s status: %s", taskId, taskResp.Output.TaskStatus)
+		Log.Info("ASR task status", "task_id", taskId, "status", taskResp.Output.TaskStatus)
 
 		switch taskResp.Output.TaskStatus {
 		case "SUCCEEDED":
@@ -357,7 +357,7 @@ func (this *DashScopeHelper) Transcribe(videoUrl string) (*DashScopeAudioTranscr
 	}
 
 	transcriptionUrl := taskResp.Output.Result.TranscriptionUrl
-	Log.Infof("downloading ASR result: %s", transcriptionUrl)
+	Log.Info("downloading ASR result", "url", transcriptionUrl)
 
 	resp, err = http.Get(transcriptionUrl)
 	if err != nil {
@@ -390,7 +390,7 @@ func (this *DashScopeHelper) Transcribe(videoUrl string) (*DashScopeAudioTranscr
 		Subtitles: subtitles,
 	}
 
-	Log.Infof("dashscope ASR done: %d subtitles", len(transcription.Subtitles))
+	Log.Info("dashscope ASR complete", "subtitle_count", len(transcription.Subtitles))
 	return transcription, nil
 }
 

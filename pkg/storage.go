@@ -40,7 +40,7 @@ func GetStorage(conf *StorageConfig) (IStorage, error) {
 	if len(conf.S3.AccessKey) > 0 {
 		disk, err := NewS3Storage(conf.S3)
 		if err != nil {
-			Log.Error(err)
+			Log.Error("failed to initialize S3 storage", "bucket", conf.S3.Bucket, "region", conf.S3.Region, "error", err)
 			return nil, err
 		}
 		return disk, nil

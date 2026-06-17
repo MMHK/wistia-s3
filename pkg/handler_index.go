@@ -135,7 +135,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 
 	storage, err := NewS3Storage(s3Conf)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create S3 storage", "error", err, "hash", hashId, "task", taskId)
 		if taskId != "" {
 			tasksMu.Lock()
 			tasks[taskId] = &Task{ID: taskId, Status: TASK_STATUS_ERROR, Result: err.Error()}
@@ -147,7 +147,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 	dbHelper := NewDBHelper(s.config.DBConf)
 	video, err := dbHelper.FindVideoInfo(hashId)
 	if err != nil {
-		Log.Infof("video %s not in BoltDB, trying S3 index.json", hashId)
+		Log.Info("video not in BoltDB, trying S3 index.json", "hash", hashId, "task", taskId)
 		s3IndexUrl := fmt.Sprintf("https://s3.%s.amazonaws.com/%s/%s/media/%s/index.json",
 			s3Conf.Region, s3Conf.Bucket, s3Conf.PrefixPath, hashId)
 		resp, httpErr := http.Get(s3IndexUrl)
@@ -209,7 +209,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 	chosenAsset := sortedFiles[0]
 	videoUrl := chosenAsset.Url
 
-	Log.Infof("indexing video %s: %s (%dx%d)", hashId, videoUrl, chosenAsset.Width, chosenAsset.Height)
+	Log.Info("indexing video", "hash", hashId, "url", videoUrl, "width", chosenAsset.Width, "height", chosenAsset.Height, "task", taskId)
 
 	audioResult, err := dashscopeHelper.Transcribe(videoUrl)
 	if err != nil {
@@ -221,25 +221,24 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 		}
 		return fmt.Errorf(errMsg)
 	}
-	Log.Infof("transcription for %s: %d subtitles, language=%s",
-		hashId, len(audioResult.Subtitles), audioResult.Language)
+	Log.Info("transcription complete", "hash", hashId, "subtitles", len(audioResult.Subtitles), "language", audioResult.Language, "task", taskId)
 
 	var videoText string
 	var videoUsage *DashScopeTokenUsage
 	for _, asset := range sortedFiles {
 		vUrl := asset.Url
 
-		Log.Infof("analyzing video %s at %dp for summary+chapters", hashId, asset.Height)
+		Log.Info("analyzing video for summary+chapters", "hash", hashId, "height", asset.Height, "task", taskId)
 		text, usage, err := dashscopeHelper.IndexVideo(vUrl, audioResult.Subtitles)
 		if err != nil {
-			Log.Warningf("dashscope video error for %s at %dp: %v, trying next", hashId, asset.Height, err)
+			Log.Warn("dashscope video analysis failed, trying next resolution", "hash", hashId, "height", asset.Height, "error", err, "task", taskId)
 			continue
 		}
 
 		cleanJSON := extractJSON(text)
 		testResult := &DashScopeVideoAnalysis{}
 		if err := json.Unmarshal([]byte(cleanJSON), testResult); err != nil {
-			Log.Warningf("dashscope video JSON parse failed for %s at %dp: %v, trying next", hashId, asset.Height, err)
+			Log.Warn("dashscope video JSON parse failed, trying next resolution", "hash", hashId, "height", asset.Height, "error", err, "task", taskId)
 			continue
 		}
 
@@ -261,7 +260,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 
 	videoResult := &DashScopeVideoAnalysis{}
 	if err := json.Unmarshal([]byte(extractJSON(videoText)), videoResult); err != nil {
-		Log.Error(err)
+		Log.Error("failed to parse final video analysis JSON", "error", err, "hash", hashId, "task", taskId)
 		if taskId != "" {
 			tasksMu.Lock()
 			tasks[taskId] = &Task{ID: taskId, Status: TASK_STATUS_ERROR, Result: err.Error()}
@@ -276,11 +275,9 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 		for i := range finalSubtitles {
 			finalSubtitles[i].Text = videoResult.Subtitles[i].Text
 		}
-		Log.Infof("merge-by-index: using %d refined subtitles (ASR timestamps preserved) for %s",
-			len(finalSubtitles), hashId)
+		Log.Info("merge-by-index: using refined subtitles with ASR timestamps preserved", "hash", hashId, "subtitles", len(finalSubtitles), "task", taskId)
 	} else if len(videoResult.Subtitles) > 0 {
-		Log.Warningf("refined subtitle count (%d) != ASR count (%d), falling back to ASR subtitles for %s",
-			len(videoResult.Subtitles), len(audioResult.Subtitles), hashId)
+		Log.Warn("refined subtitle count mismatch, falling back to ASR subtitles", "hash", hashId, "refined", len(videoResult.Subtitles), "asr", len(audioResult.Subtitles), "task", taskId)
 	}
 
 	result := &DashScopeIndexResult{
@@ -303,8 +300,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 	}
 
 	if videoUsage != nil {
-		Log.Infof("dashscope token usage for %s: input=%.1fK output=%.1fK total=%.1fK",
-			hashId, videoUsage.InputK, videoUsage.OutputK, videoUsage.TotalK)
+		Log.Info("dashscope token usage", "hash", hashId, "inputK", videoUsage.InputK, "outputK", videoUsage.OutputK, "totalK", videoUsage.TotalK, "task", taskId)
 	}
 
 	vttContent := result.ToVTT()
@@ -315,7 +311,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 		fmt.Sprintf("media/%s/index-ai.json", hashId),
 		&UploadOptions{ContentType: "application/json", PublicRead: true})
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to upload index-ai.json to S3", "error", err, "hash", hashId, "task", taskId)
 		if taskId != "" {
 			tasksMu.Lock()
 			tasks[taskId] = &Task{ID: taskId, Status: TASK_STATUS_ERROR, Result: err.Error()}
@@ -323,13 +319,13 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 		}
 		return err
 	}
-	Log.Infof("uploaded index-ai.json for %s: %s", hashId, s3JsonUrl)
+	Log.Info("uploaded index-ai.json to S3", "hash", hashId, "url", s3JsonUrl, "task", taskId)
 
 	_, s3VttUrl, err := storage.PutContent(vttContent,
 		fmt.Sprintf("media/%s/subtitles.vtt", hashId),
 		&UploadOptions{ContentType: "text/vtt", PublicRead: true})
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to upload subtitles.vtt to S3", "error", err, "hash", hashId, "task", taskId)
 		if taskId != "" {
 			tasksMu.Lock()
 			tasks[taskId] = &Task{ID: taskId, Status: TASK_STATUS_ERROR, Result: err.Error()}
@@ -337,7 +333,7 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 		}
 		return err
 	}
-	Log.Infof("uploaded subtitles.vtt for %s: %s", hashId, s3VttUrl)
+	Log.Info("uploaded subtitles.vtt to S3", "hash", hashId, "url", s3VttUrl, "task", taskId)
 
 	if s3Conf.UseCloudFront() {
 		storage.PutContent(string(jsonBin),
@@ -354,14 +350,14 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 				fmt.Sprintf("/%s/cloudfront/media/%s/subtitles.vtt", s3Conf.PrefixPath, hashId),
 			}
 			if err := cfHelper.InvalidatePaths(flushPaths); err != nil {
-				Log.Warningf("CloudFront flush failed for %s index: %v", hashId, err)
+				Log.Warn("CloudFront cache invalidation failed", "hash", hashId, "error", err, "paths", flushPaths, "task", taskId)
 			}
 		}
 	}
 
 	err = dbHelper.SaveVideoIndex(hashId, result)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to save video index to BoltDB", "error", err, "hash", hashId, "task", taskId)
 	}
 
 	if taskId != "" {

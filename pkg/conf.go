@@ -65,14 +65,14 @@ func (this *Config) MarginWithENV() {
 func (c *Config) load(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to open config file", "file", filename, "error", err)
 		return err
 	}
 	defer file.Close()
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(c)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to parse config file", "file", filename, "error", err)
 	}
 	return err
 }
@@ -90,18 +90,18 @@ func (c *Config) ToJSON() (string, error) {
 func (c *Config) Save(saveAs string) error {
 	file, err := os.Create(saveAs)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create config file", "file", saveAs, "error", err)
 		return err
 	}
 	defer file.Close()
 	data, err := json.MarshalIndent(c, "", "    ")
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to marshal config to JSON", "error", err)
 		return err
 	}
 	_, err = file.Write(data)
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to write config file", "file", saveAs, "error", err)
 	}
 	return err
 }

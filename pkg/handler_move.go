@@ -91,7 +91,7 @@ func (s *HTTPService) MoveVideoToS3(source *MultipleMediaBody, TaskId string, op
 
 			cloudFrontJson, s3Json, err := helper.MoveToS3(hashId, s.config.Storage.S3)
 			if err != nil {
-				Log.Error(err)
+				Log.Error("failed to migrate video to S3", "hash", hashId, "task_id", taskId, "error", err)
 				resultList[index] = &MoveToS3Result{
 					HashId: hashId,
 					Status: false,

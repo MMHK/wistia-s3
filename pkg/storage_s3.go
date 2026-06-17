@@ -45,7 +45,7 @@ func NewS3Storage(conf *S3Config) (IStorage, error) {
 		Credentials: credentials.NewStaticCredentials(conf.AccessKey, conf.SecretKey, ""),
 	})
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to create AWS session", "region", conf.Region, "error", err)
 		return nil, err
 	}
 
@@ -114,7 +114,7 @@ func (this *S3Storage) PutStream(reader io.Reader, Key string, opt *UploadOption
 	})
 
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to upload stream to S3", "bucket", this.Conf.Bucket, "key", path, "error", err)
 		return path, "", err
 	}
 
@@ -128,7 +128,7 @@ func (this *S3Storage) ListFiles(prefix string) ([]string, error) {
 		Prefix: aws.String(fmt.Sprintf("%s/%s", this.Conf.PrefixPath, prefix)),
 	})
 	if err != nil {
-		Log.Error(err)
+		Log.Error("failed to list S3 objects", "bucket", this.Conf.Bucket, "prefix", prefix, "error", err)
 		return nil, err
 	}
 

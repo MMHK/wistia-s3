@@ -14,14 +14,13 @@ func main() {
 
 	conf, err := pkg.NewConfigFromLocal(*conf_path)
 	if err != nil {
-		pkg.Log.Error(err)
+		pkg.Log.Error("failed to load config, using defaults", "error", err, "path", *conf_path)
 		conf = &pkg.Config{}
 	}
 
 	conf.MarginWithENV()
 
-	pkg.Log.Debug("show config detail:")
-	pkg.Log.Debug(conf.ToJSON())
+	pkg.Log.Debug("config loaded", "config", conf)
 
 	service := pkg.NewHTTP(conf)
 	service.Start()

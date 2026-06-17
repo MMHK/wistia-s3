@@ -1,26 +1,26 @@
 package pkg
 
 import (
-	"github.com/op/go-logging"
+	"log/slog"
 	"os"
+	"strings"
 )
 
-var Log = logging.MustGetLogger("wistia-s3")
+var Log *slog.Logger
 
 func init() {
-	format := logging.MustStringFormatter(
-		`WISTIA-S3 %{color} %{shortfunc} %{level:.4s} %{shortfile}
-%{id:03x}%{color:reset} %{message}`,
-	)
-	logging.SetFormatter(format)
-
-	levelStr := os.Getenv("LOG_LEVEL")
-	if len(levelStr) == 0 {
-		levelStr = "INFO"
+	lvl := slog.LevelInfo
+	if s := os.Getenv("LOG_LEVEL"); s != "" {
+		switch strings.ToUpper(s) {
+		case "DEBUG":
+			lvl = slog.LevelDebug
+		case "INFO":
+			lvl = slog.LevelInfo
+		case "WARN":
+			lvl = slog.LevelWarn
+		case "ERROR":
+			lvl = slog.LevelError
+		}
 	}
-	level, err := logging.LogLevel(levelStr)
-	if err != nil {
-		level = logging.INFO
-	}
-	logging.SetLevel(level, "wistia-s3")
+	Log = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
 }
