@@ -19,9 +19,7 @@ RUN go version \
 ######## Start a new stage from scratch #######
 FROM alpine:latest  
 
-RUN apk update \
- && apk add --update libintl \
- && apk add --no-cache tzdata dumb-init mailcap \
+RUN apk add --no-cache libintl tzdata dumb-init mailcap \
  && addgroup -S appgroup \
  && adduser -S appuser -G appgroup -h /home/appuser -s /sbin/nologin
 

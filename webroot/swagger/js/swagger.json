@@ -16,7 +16,7 @@
       "post": {
         "tags": [],
         "summary": "从S3刷新所有 uploaded video 到 local DB",
-        "description": "<p>从S3刷新所有 uploaded video 到 local DB</p>",
+        "description": "<p>从S3刷新所有 uploaded video 到 local DB。同时拉取 index.json（视频基本信息）和 index-ai.json（AI 索引结果）。</p>",
         "responses": {
           "200": {
             "description": "成功",
@@ -78,7 +78,18 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/WistiaRespVideo"
+                        "allOf": [
+                          { "$ref": "#/components/schemas/WistiaRespVideo" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "index": {
+                                "$ref": "#/components/schemas/DashScopeIndexResult",
+                                "description": "AI 索引結果（若存在）"
+                              }
+                            }
+                          }
+                        ]
                       }
                     }
                   }

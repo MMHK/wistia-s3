@@ -5,6 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      extra_hosts:
+        - "dl-cdn.alpinelinux.org:167.82.10.132"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   wistia-s3:
     image: "mmhk/wistia-s3"

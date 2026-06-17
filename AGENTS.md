@@ -109,9 +109,35 @@ Env vars: `S3_KEY`, `S3_SECRET`, `S3_BUCKET`, `S3_REGION`, `S3_PREFIX`, `S3_CLOU
 - `RefreshVideoInfo` fetches `index.json` directly from S3 (`s3.{region}.amazonaws.com`), bypassing CloudFront even when configured
 - `UploadWistiaS3JS` (player JS) is a standalone function — it is **not** called automatically by `/move`. The player JS must be uploaded separately before video pages work
 
-## Workflow & Process
+## Workflow & Process (Mandatory)
 
-### Clarify before plan
+### Role Separation
+
+- **Main Agent** (this session): Orchestrator only. **NEVER writes code directly.**
+  - Creates task plans in `docs/plans/` before any implementation
+  - Delegates all code changes to **Sub Agents** via the `task` tool
+  - Maintains long-running task loops until the project goal is complete
+  - Tracks progress, resolves blockers, and coordinates sub agent outputs
+  - Continuously asks clarifying questions until understanding is aligned
+
+- **Sub Agents**: Executors. Implement code, run tests, perform reviews.
+  - `explore` agent: Codebase analysis, file search, architecture questions
+  - `general` agent: Code implementation, test writing, file modifications, multi-step tasks
+  - `code-reviewer` agent: Code review, concurrency safety, S3 backward compatibility checks
+
+### Workflow (Every Task MUST Follow This Order)
+
+```
+1. CLARIFY → Main agent asks user questions to align understanding
+2. PLAN    → Main agent creates/updates plan in docs/plans/<task-name>-plan.md
+3. DELEGATE → Main agent spawns sub agent(s) to implement
+4. REVIEW  → Main agent spawns sub agent to review code against plan
+5. UPDATE  → Sub agent updates plan document with task status
+6. VERIFY  → Main agent runs: docker build → docker test → yarn build
+7. LOOP    → Main agent checks progress, spawns next task or loops until done
+```
+
+### Clarify Before Plan
 
 The main agent **must** continuously ask the user to clarify planning and implementation details before any work begins. Do not assume intent — confirm:
 
@@ -122,67 +148,118 @@ The main agent **must** continuously ask the user to clarify planning and implem
 
 Keep asking until understanding is fully aligned with the user's intent. Only then proceed to planning.
 
-### Planning-first rule — doc BEFORE implementation
+### Planning-First Rule — Doc BEFORE Implementation
 
-Before **any** code is written, the main agent **must** create or update a planning document at `docs/{feature-name}.md`. No implementation starts without this doc being finalized.
+Before **any** code is written, the main agent **must** create or update a planning document at `docs/plans/{feature-name}-plan.md`. No implementation starts without this doc being finalized.
 
-The doc must include:
-- **Goal / background** — what problem this solves
-- **Technical approach** — architecture decisions, trade-offs (especially S3 key layout changes, BoltDB schema changes, or async task model changes)
-- **Task breakdown** — numbered checklist with `- [ ]` / `- [x]`
-- **Affected files / routes / S3 paths** — explicit list
-- **Testing strategy** — what to test and how (note: all tests are integration tests requiring real credentials)
-- **Open questions** — anything still unresolved
+### Plan Document Format (`docs/plans/<task-name>-plan.md`)
 
-### Sub-agent delegation
+Every plan document MUST use this structure:
 
-The main agent **never writes code directly**. All implementation is delegated to sub agents:
+```markdown
+# <Task Title>
 
-| Step | Agent type | Purpose |
-|------|-----------|---------|
-| Clarify | Main agent | Ask user questions to align understanding |
-| Plan | Main agent | Write `docs/{feature}.md` (must be done **before** any code) |
-| Implement | `general` or `explore` sub agent | Write the actual code changes |
-| Review | `code-reviewer` sub agent | Inspect changes for correctness, style, concurrency safety, S3 backward compat |
+**Created**: YYYY-MM-DD
+**Status**: 🟡 In Progress | 🟢 Complete | 🔴 Blocked | ⚪ Pending
+**Priority**: High | Medium | Low
 
-#### Implementation flow
+---
 
+## Background & Goals
+Brief description of why this task exists and what it aims to achieve.
+
+## Technical Approach
+Architecture decisions, trade-offs (especially S3 key layout changes, BoltDB schema changes, or async task model changes).
+
+## Affected Files / Routes / S3 Paths
+Explicit list of what will be modified.
+
+## Tasks
+
+| # | Task | Status | Sub Agent | Notes |
+|---|------|--------|-----------|-------|
+| 1 | Task description | ⬜ Pending | — | |
+| 2 | Task description | 🔄 In Progress | general | |
+| 3 | Task description | ✅ Complete | general | Reviewed |
+
+### Status Legend
+- ⬜ Pending — not started
+- 🔄 In Progress — sub agent working on it
+- ✅ Complete — implemented and reviewed
+- 🔴 Blocked — dependency or issue, needs resolution
+- ⏭️ Skipped — not needed, with reason
+
+## Testing Strategy
+What to test and how (note: all tests are integration tests requiring real credentials).
+
+## Review Log
+
+| Date | Reviewer | Findings | Action Taken |
+|------|----------|----------|--------------|
+| YYYY-MM-DD | code-reviewer | Description | Fix applied |
+
+## Open Questions
+Anything still unresolved.
 ```
-1. Main agent asks clarifying questions until understanding is aligned
-2. Main agent writes planning doc → docs/{feature}.md (with task checklist)
-3. Main agent spawns implementation sub agent with:
-   - Clear task description referencing the doc
-   - File paths to modify
-   - Expected outcome
-4. Sub agent implements changes, returns summary
-5. Main agent spawns code-reviewer sub agent with:
-   - git diff or list of changed files
-   - Review checklist (correctness, conventions, concurrency safety, S3 key layout compat, error handling)
-6. If review finds issues → spawn another implementation sub agent to fix
-7. Repeat 4-6 until review passes
-8. Main agent runs verification: docker build → docker test ./pkg/... → yarn build (from web/)
-```
 
-### Sub agent prompt template
+### Sub Agent Delegation Rules
+
+- **Always include full context** in the prompt: file paths, expected behavior, constraints from AGENTS.md.
+- **One sub agent per logical task** — do not batch unrelated changes.
+- **Parallel when independent** — launch multiple sub agents simultaneously for unrelated tasks.
+- **Sequential when dependent** — wait for prior sub agent to finish before spawning the next.
+- Use `explore` agent before `general` agent when the task requires understanding unfamiliar code.
+- Use `code-reviewer` agent after every implementation task.
+
+### Implementation Sub Agent Prompt Template
 
 When spawning an implementation sub agent, include:
 
 - **What**: Concise description of the task
-- **Context**: Reference to `docs/{feature}.md` for full plan
+- **Context**: Reference to `docs/plans/{feature}-plan.md` for full plan
 - **Files**: Specific paths to create/modify
-- **Constraints**: Follow existing conventions (see AGENTS.md), Go 1.19 compat, S3 key layout backward compat
+- **Constraints**: Follow existing conventions (see AGENTS.md), Go 1.19 compat, S3 key layout backward compat, receiver name is `this`
 - **Verification**: How to verify (e.g. `docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.19 go test ./pkg/ -run TestXxx`)
 - **Return**: Summarize changes made and any issues encountered
+
+### Review Sub Agent Prompt Template
 
 When spawning a review sub agent, include:
 
 - **Scope**: List of changed files or `git diff`
-- **Checklist**: Correctness, code style, concurrency safety, error handling, S3 backward compatibility, test coverage
+- **Checklist**: 
+  - Correctness and logic
+  - Code style (receiver name `this`, JSON format `{"status": bool, ...}`)
+  - Concurrency safety (semaphore channels, WaitGroup, mutex)
+  - Error handling (`APIStandardError` format)
+  - S3 backward compatibility (key layout, PublicRead)
+  - BoltDB compatibility (bucket: "media")
+  - Test coverage
 - **Return**: List of issues found (or "LGTM"), severity, and suggested fixes
 
-### Docs directory convention
+### Main Agent Loop Responsibilities
 
-- One MD file per feature/feature-area: `docs/{feature-name}.md`
+For multi-task or long-running projects, the main agent MUST:
+1. Break the project into discrete tasks in the plan document
+2. Execute tasks one-by-one or in parallel batches via sub agents
+3. After each batch: verify results, update plan status
+4. If a sub agent fails or produces incorrect output: diagnose, adjust prompt, re-delegate
+5. Continue the loop until ALL tasks in the plan are ✅ Complete or explicitly ⏭️ Skipped
+6. After each major milestone, spawn a `code-reviewer` sub agent for a holistic review
+
+### Forbidden Main Agent Actions
+
+The main agent MUST NOT:
+- Write or edit source code files directly (use sub agents)
+- Skip the plan document step
+- Skip the review step
+- Mark tasks as complete without sub agent review confirmation
+- Abandon a task loop without updating the plan document status to 🔴 Blocked with a reason
+
+### Docs Directory Convention
+
+- Plan documents: `docs/plans/{feature-name}-plan.md`
+- Feature docs: `docs/{feature-name}.md` (for architecture/design docs, not task plans)
 - Subdirectories for grouped features: `docs/migration/*.md`, `docs/api/*.md`
-- Each doc must include a **Tasks** section with checkboxes (`- [ ]` / `- [x]`)
+- Each plan doc must include a **Tasks** table with status tracking
 - Keep docs updated as tasks progress
