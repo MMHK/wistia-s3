@@ -1,15 +1,15 @@
 version: "3"
 services:
   e2e-test:
-    image: golang:1.19
+    image: golang:1.21
     env_file:
       - .env
-    environment:
-      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
-      - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope-intl.aliyuncs.com}
-      - DASHSCOPE_ASR_MODEL=${DASHSCOPE_ASR_MODEL:-fun-asr}
-      - DASHSCOPE_VIDEO_MODEL=${DASHSCOPE_VIDEO_MODEL:-qwen3.5-omni-plus}
     working_dir: /app
+    environment:
+      - TEMPLATE_DIR_PATH=/app/web/dist
+      - WEBROOT=/app/webroot
+      - DB_FILE_PATH=/app/data/wista-s3.db
+      - TZ=Asia/Hong_Kong
     volumes:
       - .:/app
       - go-cache:/root/.cache/go-build

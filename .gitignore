@@ -10,3 +10,4 @@ node_modules
 /wistia-s3
 /web/dist
 /webroot/webui
+/data

@@ -17,7 +17,7 @@ RUN go version \
  && chmod +x wistia-s3
 
 ######## Start a new stage from scratch #######
-FROM alpine:latest  
+FROM alpine:latest
 
 RUN apk add --no-cache libintl tzdata dumb-init mailcap \
  && addgroup -S appgroup \
@@ -27,7 +27,7 @@ WORKDIR /app
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder --chown=appuser:appgroup /app/wistia-s3 .
-COPY --chown=appuser:appgroup ./web /app/web
+COPY --chown=appuser:appgroup ./web/dist /app/web/dist
 COPY --chown=appuser:appgroup ./webroot /app/webroot
 
 RUN chown -R appuser:appgroup /app

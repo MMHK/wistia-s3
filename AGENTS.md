@@ -20,9 +20,14 @@ docker run --rm -v "${PWD}:/app" -w /app golang:1.21 sh -c "go get github.com/pk
 # Frontend (run from web/ directory)
 yarn build                           # production → web/dist/
 yarn serve                           # dev server
+
+# E2E tests (multi-service workflows: Wistia + S3 + DashScope + BoltDB)
+docker compose -f docker-compose.e2e.yml up --build
+# Equivalent docker run:
+docker run --rm -v "${PWD}:/app" -w /app --env-file .env golang:1.21 go test ./pkg/ -v -run TestE2E -timeout 600s
 ```
 
-**Verification order**: `docker build` → `docker test ./pkg/...` (needs `.env` with creds) → `yarn build` (from `web/`)
+**Verification order**: `docker build` → `docker test ./pkg/...` (needs `.env` with creds) → `yarn build` (from `web/`) → `docker compose -f docker-compose.e2e.yml up --build` (e2e)
 
 ## Testing gotchas
 
@@ -30,6 +35,10 @@ yarn serve                           # dev server
 - `conf_test.go` requires a `config.json` file at repo root — it does not exist by default, must be created manually.
 - `wistia_test.go` has a test (`TestWistiaHelper_reUploadAllDemoPage`) that reads `ALL_VIDEO_JSON` env var pointing to a JSON file.
 - `tests/testing.go` auto-loads `../.env` via `godotenv` in its `init()`.
+- **E2E tests** (`TestE2E_*`) are multi-service workflow tests, distinct from per-feature integration tests. Run via `docker compose -f docker-compose.e2e.yml up --build` (10-min timeout). Requires `.env` with Wistia + S3 + DashScope credentials.
+  - `TestE2E_FindNotUploadedVideos` — compares Wistia library vs BoltDB to find un-migrated videos.
+  - `TestE2E_IndexVideoToS3_DashScope` — full AI indexing pipeline (transcribe → analyze → S3 upload → BoltDB round-trip). ~51s runtime. Skips if `DASHSCOPE_API_KEY` is missing.
+  - The e2e compose file uses named volumes (`go-cache`, `go-mod`) to persist build/module cache across runs.
 
 ## Architecture
 

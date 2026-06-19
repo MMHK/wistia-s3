@@ -15,6 +15,9 @@ services:
     image: "mmhk/wistia-s3"
     restart: always
     container_name: wistia-s3
+    volumes:
+      - ./webroot:/app/webroot:ro
+      - ./data:/app/data
     environment:
       - S3_KEY=${S3_KEY}
       - S3_SECRET=${S3_SECRET}
@@ -26,11 +29,11 @@ services:
       - WISTIA_API_KEY=${WISTIA_API_KEY}
       - WISTIA_WORKER_LIMIT=3
       - TEMPLATE_DIR_PATH=/app/web/dist
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=DEBUG
       - TZ=Asia/Hong_Kong
       - LISTEN=0.0.0.0:3031
       - WEBROOT=/app/webroot
-      - DB_FILE_PATH=/app/wista-s3.db
+      - DB_FILE_PATH=/app/data/wista-s3.db
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
       - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope-intl.aliyuncs.com}
       - DASHSCOPE_ASR_MODEL=${DASHSCOPE_ASR_MODEL:-qwen3-asr-flash-filetrans}
