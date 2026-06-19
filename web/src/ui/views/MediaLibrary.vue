@@ -93,6 +93,7 @@
               <router-link :to="`/video/${item.hashed_id}`" class="text-blue-600 hover:underline font-medium">
                 {{ item.name || '(未命名)' }}
               </router-link>
+              <span v-if="item.index" class="ml-1.5 inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded bg-purple-50 text-purple-600">AI</span>
             </td>
             <td class="px-3 py-2 font-mono text-xs text-slate-500">{{ item.hashed_id }}</td>
             <td class="px-3 py-2 text-slate-500">{{ formatDuration(item.duration) }}</td>
@@ -140,6 +141,7 @@
             <router-link :to="`/video/${item.hashed_id}`" class="text-sm font-medium text-blue-600 hover:underline block truncate">
               {{ item.name || '(未命名)' }}
             </router-link>
+            <span v-if="item.index" class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded bg-purple-50 text-purple-600 mt-0.5">AI</span>
             <div class="text-xs text-slate-500 font-mono mt-0.5">{{ item.hashed_id }}</div>
             <div class="text-xs text-slate-500 mt-0.5">{{ formatDuration(item.duration) }}</div>
           </div>
@@ -201,18 +203,29 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { getMedia, moveVideo, moveBatch, refreshMedia, indexVideo, indexBatch } from '../api'
 import { useTaskPolling } from '../composables/useTaskPolling'
 import { useToast } from '../composables/useToast'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 
+const route = useRoute()
+const router = useRouter()
 const { addTask } = useTaskPolling()
 const { addToast } = useToast()
 
 const media = ref([])
 const loading = ref(false)
 const search = ref('')
-const page = ref(1)
+const page = computed({
+  get: () => Number(route.query.page) || 1,
+  set: (val) => {
+    const query = { ...route.query }
+    if (val <= 1) delete query.page
+    else query.page = String(val)
+    router.push({ query })
+  }
+})
 const selected = ref(new Set())
 const perPage = 20
 
@@ -267,7 +280,11 @@ const fetchData = async () => {
   loading.value = true
   try {
     const data = await getMedia()
-    media.value = Array.isArray(data) ? data : []
+    media.value = (Array.isArray(data) ? data : []).sort((a, b) => {
+      const ca = a.created || ''
+      const cb = b.created || ''
+      return ca < cb ? -1 : ca > cb ? 1 : 0
+    })
   } catch (e) {
     addToast('載入失敗: ' + e.message, 'error')
   } finally {
