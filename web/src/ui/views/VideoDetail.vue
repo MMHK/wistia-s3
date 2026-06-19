@@ -26,6 +26,14 @@
         </div>
       </div>
 
+      <div class="mb-6 rounded overflow-hidden bg-black">
+        <VideoPlayer
+          ref="playerRef"
+          :hash-id="props.hash"
+          @timeupdate="onPlayerTimeUpdate"
+        />
+      </div>
+
       <div class="flex flex-wrap gap-2 mb-6">
         <button
           class="px-3 py-1.5 text-sm font-medium rounded border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 min-h-11 transition-colors"
@@ -165,6 +173,28 @@
           </div>
         </div>
       </div>
+
+      <div v-if="subtitles.length > 0" class="mt-6">
+        <button
+          class="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-3 w-full text-left min-h-11 lg:cursor-default"
+          @click="subtitleEditorOpen = !subtitleEditorOpen"
+        >
+          <svg class="w-4 h-4 transition-transform lg:hidden" :class="{ 'rotate-90': subtitleEditorOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          字幕編輯器
+          <span class="text-xs font-normal text-slate-500 ml-1">({{ subtitles.length }} 筆)</span>
+        </button>
+        <div :class="{ 'hidden lg:block': !subtitleEditorOpen }">
+          <SubtitleEditor
+            ref="subtitleEditorRef"
+            :hash-id="props.hash"
+            :initial-subtitles="subtitles"
+            :get-current-time="getPlayerCurrentTime"
+            @saved="onSubtitlesSaved"
+          />
+        </div>
+      </div>
     </template>
 
     <ConfirmDialog
@@ -183,6 +213,8 @@ import { getMedia, moveVideo, indexVideo, getIndex } from '../api'
 import { useTaskPolling } from '../composables/useTaskPolling'
 import { useToast } from '../composables/useToast'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import VideoPlayer from '../components/VideoPlayer.vue'
+import SubtitleEditor from '../components/SubtitleEditor.vue'
 
 const props = defineProps({ hash: { type: String, required: true } })
 
@@ -195,6 +227,9 @@ const loading = ref(false)
 const indexLoading = ref(false)
 const assetsOpen = ref(true)
 const aiOpen = ref(true)
+const subtitleEditorOpen = ref(true)
+const playerRef = ref(null)
+const subtitleEditorRef = ref(null)
 
 const confirmDlg = ref({ show: false, title: '', message: '', onConfirm: () => {} })
 
@@ -204,6 +239,33 @@ const showConfirm = (title, message, onConfirm) => {
 
 const assets = computed(() => (video.value && video.value.assets) ? video.value.assets : [])
 const assetCount = computed(() => assets.value.length)
+
+const subtitles = computed(() => {
+  if (aiIndex.value && aiIndex.value.subtitles) {
+    return aiIndex.value.subtitles
+  }
+  if (video.value && video.value.index && video.value.index.subtitles) {
+    return video.value.index.subtitles
+  }
+  return []
+})
+
+const onPlayerTimeUpdate = (time) => {
+  if (subtitleEditorRef.value) {
+    subtitleEditorRef.value.updateCurrentIndex(time)
+  }
+}
+
+const getPlayerCurrentTime = () => {
+  if (playerRef.value) {
+    return playerRef.value.getCurrentTime()
+  }
+  return 0
+}
+
+const onSubtitlesSaved = () => {
+  fetchIndex()
+}
 
 const formatDuration = (sec) => {
   if (!sec) return '--:--'

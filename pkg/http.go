@@ -106,6 +106,7 @@ func (s *HTTPService) Start() {
 	r.HandleFunc("/index/{hash}", s.IndexVideo).Methods("POST")
 	r.HandleFunc("/index", s.IndexAllVideo).Methods("POST")
 	r.HandleFunc("/index/{hash}", s.GetIndex).Methods("GET")
+	r.HandleFunc("/index/{hash}/subtitles", s.UpdateSubtitles).Methods("PUT")
 	r.HandleFunc("/sync/wistia", s.SyncWistiaVideos).Methods("POST")
 	r.HandleFunc("/wistia/media", s.GetWistiaMedia).Methods("GET")
 	r.HandleFunc("/tasks/{id}", s.GetTask).Methods("GET")

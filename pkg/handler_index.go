@@ -372,3 +372,115 @@ func (s *HTTPService) indexVideoToS3(hashId string, taskId string) error {
 
 	return nil
 }
+
+type UpdateSubtitlesRequest struct {
+	Subtitles []DashScopeSubtitleEntry `json:"subtitles"`
+}
+
+func (s *HTTPService) UpdateSubtitles(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	hashId := params["hash"]
+
+	var req UpdateSubtitlesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.ResponseJSONError(&APIStandardError{
+			Status:     false,
+			Error:      err.Error(),
+			HttpStatus: http.StatusBadRequest,
+		}, w)
+		return
+	}
+
+	if len(req.Subtitles) == 0 {
+		s.ResponseJSONError(&APIStandardError{
+			Status:     false,
+			Error:      "subtitles array cannot be empty",
+			HttpStatus: http.StatusBadRequest,
+		}, w)
+		return
+	}
+
+	dbHelper := NewDBHelper(s.config.DBConf)
+	index, err := dbHelper.FindVideoIndex(hashId)
+	if err != nil {
+		s.ResponseJSONError(&APIStandardError{
+			Status:     false,
+			Error:      fmt.Sprintf("index not found for %s, run AI index first", hashId),
+			HttpStatus: http.StatusNotFound,
+		}, w)
+		return
+	}
+
+	index.Subtitles = req.Subtitles
+
+	s3Conf := s.config.Storage.S3
+	storage, err := NewS3Storage(s3Conf)
+	if err != nil {
+		s.ResponseJSONError(&APIStandardError{
+			Status:     false,
+			Error:      err.Error(),
+			HttpStatus: http.StatusInternalServerError,
+		}, w)
+		return
+	}
+
+	vttContent := index.ToVTT()
+	jsonBin, _ := json.Marshal(index)
+
+	_, _, err = storage.PutContent(string(jsonBin),
+		fmt.Sprintf("media/%s/index-ai.json", hashId),
+		&UploadOptions{ContentType: "application/json", PublicRead: true})
+	if err != nil {
+		s.ResponseJSONError(&APIStandardError{
+			Status:     false,
+			Error:      fmt.Sprintf("failed to upload index-ai.json: %v", err),
+			HttpStatus: http.StatusInternalServerError,
+		}, w)
+		return
+	}
+
+	_, _, err = storage.PutContent(vttContent,
+		fmt.Sprintf("media/%s/subtitles.vtt", hashId),
+		&UploadOptions{ContentType: "text/vtt", PublicRead: true})
+	if err != nil {
+		s.ResponseJSONError(&APIStandardError{
+			Status:     false,
+			Error:      fmt.Sprintf("failed to upload subtitles.vtt: %v", err),
+			HttpStatus: http.StatusInternalServerError,
+		}, w)
+		return
+	}
+
+	if s3Conf.UseCloudFront() {
+		storage.PutContent(string(jsonBin),
+			fmt.Sprintf("cloudfront/media/%s/index-ai.json", hashId),
+			&UploadOptions{ContentType: "application/json", PublicRead: true})
+		storage.PutContent(vttContent,
+			fmt.Sprintf("cloudfront/media/%s/subtitles.vtt", hashId),
+			&UploadOptions{ContentType: "text/vtt", PublicRead: true})
+
+		cfHelper := NewCloudFrontHelper(s3Conf)
+		if cfHelper != nil {
+			flushPaths := []string{
+				fmt.Sprintf("/%s/cloudfront/media/%s/index-ai.json", s3Conf.PrefixPath, hashId),
+				fmt.Sprintf("/%s/cloudfront/media/%s/subtitles.vtt", s3Conf.PrefixPath, hashId),
+			}
+			if err := cfHelper.InvalidatePaths(flushPaths); err != nil {
+				Log.Warn("CloudFront cache invalidation failed", "hash", hashId, "error", err)
+			}
+		}
+	}
+
+	err = dbHelper.SaveVideoIndex(hashId, index)
+	if err != nil {
+		Log.Error("failed to save updated index to BoltDB", "error", err, "hash", hashId)
+	}
+
+	Log.Info("subtitles updated", "hash", hashId, "count", len(req.Subtitles))
+
+	s.ResponseJSON(map[string]interface{}{
+		"hashId":        hashId,
+		"updatedAt":     time.Now().UTC().Format(time.RFC3339),
+		"subtitleCount": len(req.Subtitles),
+	}, w)
+}

@@ -51,3 +51,10 @@ export function indexBatch(hashes) {
 export function getIndex(hash) {
   return request(`/index/${encodeURIComponent(hash)}`)
 }
+
+export function saveSubtitles(hash, subtitles) {
+  return request(`/index/${encodeURIComponent(hash)}/subtitles`, {
+    method: 'PUT',
+    body: JSON.stringify({ subtitles }),
+  })
+}
