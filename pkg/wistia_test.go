@@ -331,6 +331,31 @@ func TestWistiaHelper_GenerateVideoInfoURL(t *testing.T) {
 	t.Log(s3Json)
 }
 
+func TestWistiaHelper_ListAllVideos(t *testing.T) {
+	conf := new(WistiaConf)
+	conf.MarginWithENV()
+
+	helper := NewWistiaHelper(conf)
+
+	videos, err := helper.ListAllVideos()
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+
+	t.Logf("Total videos fetched: %d", len(videos))
+
+	for i, v := range videos {
+		if i >= 3 {
+			break
+		}
+		t.Logf("Video %d: hash=%s, name=%s, archived=%v", i, v.HashId, v.Name, v.Archived)
+	}
+
+	t.Log("PASS")
+}
+
 func TestWistiaHelper_ArchiveVideos(t *testing.T) {
 	conf := new(WistiaConf)
 	conf.MarginWithENV()

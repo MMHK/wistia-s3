@@ -49,6 +49,140 @@
         }
       }
     },
+    "/sync/wistia": {
+      "post": {
+        "tags": [],
+        "summary": "從 Wistia API 同步所有視頻資訊到本地資料庫",
+        "description": "<p>從 Wistia API 拉取所有 active + archived 視頻的 metadata，快取到本地 BoltDB。使用 async task 模式，需輪詢 GET /tasks/{id} 取得結果。</p>",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wistia/media": {
+      "get": {
+        "tags": [],
+        "summary": "查詢 Wistia 視頻目錄（從本地快取）",
+        "description": "<p>從本地 BoltDB 快取中查詢 Wistia 視頻目錄，支援依 hash 查詢單一視頻、依 archived 狀態篩選，以及分頁。</p>",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "query",
+            "description": "視頻 HashId（提供時回傳單一視頻）",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "依 archived 狀態篩選（true 或 false）",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "頁碼（預設 1）",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "每頁筆數（預設 50，最大 100）",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WistiaRespVideo"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "per_page": { "type": "integer" },
+                        "total": { "type": "integer" },
+                        "total_pages": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未找到（hash 查詢無結果）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "錯誤",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIStandardError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/media": {
       "get": {
         "tags": [],

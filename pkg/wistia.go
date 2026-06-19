@@ -89,6 +89,7 @@ type WistiaRespVideo struct {
 	Progress  float32                   `json:"progress"`
 	Archived  bool                      `json:"archived"`
 	Section   string                    `json:"section"`
+	Created   string                    `json:"created"`
 	Thumbnail *WistiaRespVideoThumbnail `json:"thumbnail"`
 	Assets    *AssetList                `json:"assets"`
 	Project   *WistiaRespVideoProject   `json:"project"`
@@ -162,6 +163,80 @@ func (this *WistiaHelper) GetVideoDetail(hashId string) (*WistiaRespVideo , erro
 	return videoResult, nil
 }
 
+func (this *WistiaHelper) ListAllVideos() ([]*WistiaRespVideo, error) {
+	const perPage = 50
+	allVideos := make([]*WistiaRespVideo, 0)
+	page := 1
+
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	for {
+		this.queue <- true
+
+		baseURL := fmt.Sprintf("%s/medias.json", WISTIA_API_ENDPOINT)
+		u, err := url.Parse(baseURL)
+		if err != nil {
+			<-this.queue
+			Log.Error("failed to parse Wistia list API URL", "error", err, "page", page)
+			return allVideos, err
+		}
+
+		query := u.Query()
+		query.Add("page", strconv.Itoa(page))
+		query.Add("per_page", strconv.Itoa(perPage))
+		u.RawQuery = query.Encode()
+
+		Log.Info("fetching Wistia video list", "page", page, "per_page", perPage)
+
+		req, err := http.NewRequest("GET", u.String(), nil)
+		if err != nil {
+			<-this.queue
+			Log.Error("failed to create Wistia list API request", "error", err, "page", page)
+			return allVideos, err
+		}
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", this.Conf.WistiaApiKey))
+
+		resp, err := client.Do(req)
+		if err != nil {
+			<-this.queue
+			Log.Error("failed to execute Wistia list API request", "error", err, "page", page)
+			return allVideos, err
+		}
+
+		if resp.StatusCode != 200 {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			<-this.queue
+			Log.Error("Wistia list API returned non-200", "status", resp.StatusCode, "page", page, "body", string(body))
+			return allVideos, fmt.Errorf("Wistia API returned status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var pageVideos []*WistiaRespVideo
+		decoder := json.NewDecoder(resp.Body)
+		if err := decoder.Decode(&pageVideos); err != nil {
+			resp.Body.Close()
+			<-this.queue
+			Log.Error("failed to decode Wistia list API response", "error", err, "page", page)
+			return allVideos, err
+		}
+		resp.Body.Close()
+		<-this.queue
+
+		Log.Info("fetched Wistia video list page", "page", page, "count", len(pageVideos), "total", len(allVideos)+len(pageVideos))
+
+		allVideos = append(allVideos, pageVideos...)
+
+		if len(pageVideos) < perPage {
+			break
+		}
+		page++
+	}
+
+	Log.Info("finished fetching all Wistia videos", "total", len(allVideos))
+	return allVideos, nil
+}
 
 func (this *WistiaHelper) ArchiveVideos(videoHashList []string) error {
 	baseURL := fmt.Sprintf("%s/medias/archive.json", WISTIA_API_ENDPOINT)
